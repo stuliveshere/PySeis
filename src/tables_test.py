@@ -5,7 +5,7 @@
 import tables as tb
 import numpy as np
 
-class TraceHdr(tb.IsDescription):
+class Trace(tb.IsDescription):
 	tracr =  tb.Int32Col()
 	fldr =  tb.Int32Col()
 	tracf =  tb.Int32Col()
@@ -96,5 +96,8 @@ class TraceHdr(tb.IsDescription):
 	SourceMeasurementUnit =  tb.Int16Col()
 	UnassignedInt1 =  tb.Int32Col()
 	ns1 =  tb.Int32Col()
+	data = tb.Float32Col(2000) 
 	
 h5file = tb.openFile("test1.h5", mode = "w", title = "Test file")
+group = h5file.createGroup("/", 'line1', 'Line 1 Survey')
+table = h5file.createTable(group, 'data', Trace, "Trace Example")
