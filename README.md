@@ -23,8 +23,12 @@ Open and shared
 
 =========
 
+epd compatible
+
 define data format using pytables
 
 segd/segy/su object management
+
+matplotlib/mayavi visualisation
 
 currently includes stand-alone pre-stack kirchhoff time migration code
