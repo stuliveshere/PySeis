@@ -21,6 +21,8 @@ Flexible
 
 Open and shared
 
+=========
+
 define data format using pytables
 
 segd/segy/su object management
