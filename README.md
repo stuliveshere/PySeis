@@ -23,7 +23,7 @@ Open and shared
 
 =========
 
-epd compatible
+[EPD](https://www.enthought.com/products/epd/free/) compatible as much as possible.  The reliance on EPD is due to a heavy dependence upon numpy.
 
 define data format using [pytables](http://www.pytables.org/)
 
