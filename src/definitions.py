@@ -1,5 +1,5 @@
 import tables as tb
-class Trace(tb.IsDescription):
+class SU_header(tb.IsDescription):
 	tracl =  tb.Int32Col()	
 	tracr =  tb.Int32Col()
 	fldr =  tb.Int32Col()
@@ -91,4 +91,3 @@ class Trace(tb.IsDescription):
 	SourceMeasurementUnit =  tb.Int16Col()
 	UnassignedInt1 =  tb.Int32Col()
 	ns1 =  tb.Int32Col()
-	trace = tb.Float32Col(2500)

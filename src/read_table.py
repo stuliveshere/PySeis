@@ -11,3 +11,5 @@ import definitions as d
 h5file = tb.openFile("test1.h5", mode = "r")
 
 dataObject = h5file.getNode("/columns", "cdp")
+
+print dataObject

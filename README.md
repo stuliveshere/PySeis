@@ -30,5 +30,3 @@ define data format using [pytables](http://www.pytables.org/)
 segd/segy/su object management
 
 matplotlib/mayavi visualisation
-
-currently includes stand-alone pre-stack kirchhoff time migration code
