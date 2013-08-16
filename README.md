@@ -25,7 +25,7 @@ Open and shared
 
 epd compatible
 
-define data format using pytables
+define data format using [pytables](http://www.pytables.org/)
 
 segd/segy/su object management
 
