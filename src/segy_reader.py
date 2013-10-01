@@ -3,9 +3,10 @@ import numpy as np
 
 file = open('./data/sample.sgy', 'rb')
 
-bin = file.read(400)
-txt =  file.read(3200)
+
+txt =  file.read(1)
 
 
-print bin
+import binascii
+print bin(int(binascii.hexlify(txt), 16))
 

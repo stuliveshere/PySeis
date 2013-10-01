@@ -136,7 +136,7 @@ class segy_file_header(tb.IsDescription):
 	TFH40 = tb.StringCol(80)
 	
 segy_textual_file_header = np.dtype([
-('TFH1', '>a80'),
+('TFH1', '<a80'),
 ('TFH2', (np.str_,80)),
 ('TFH3', (np.str_,80)),
 ('TFH4', (np.str_,80)),
