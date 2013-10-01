@@ -4,9 +4,5 @@ import numpy as np
 file = open('./data/sample.sgy', 'rb')
 
 
-txt =  file.read(1)
-
-
-import binascii
-print bin(int(binascii.hexlify(txt), 16))
-
+for i in range(40):
+	print  file.read(80).decode('EBCDIC-CP-BE') 
