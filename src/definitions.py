@@ -134,7 +134,43 @@ class segy_file_header(tb.IsDescription):
 	TFH38 = tb.StringCol(80)
 	TFH39 = tb.StringCol(80)
 	TFH40 = tb.StringCol(80)
-	
+
+segy_binary_header=np.dtype([
+	('jobid','>i4'),
+	('lino','>i4'),
+	('reno','>i4'),
+	('ntrpr','>i2'),
+	('nart','>i2'),
+	('hdt','>u2'),
+	('dto','>u2'),
+	('hns','>u2'),
+	('nso','>u2'),
+	('format','>i2'),
+	('fold','>i2'),
+	('tsort','>i2'),
+	('vscode','>i2'),
+	('hsfs','>i2'),
+	('hsfe','>i2'),
+	('hslen','>i2'),
+	('hstyp','>i2'),
+	('schn','>i2'),
+	('hstas','>i2'),
+	('hstae','>i2'),
+	('htatyp','>i2'),
+	('hcorr','>i2'),
+	('bgrcv','>i2'),
+	('rcvm','>i2'),
+	('mfeet','>i2'),
+	('polyv','>i2'),
+	('vpol','>i2'),
+	('unassigned_1',(np.str_,240)),
+	('segyrev','>i2'),
+	('fixedlen','>i2'),
+	('numhdr','>i2'),
+	('unassigned_2',(np.str_,94)),
+])
+
+
 segy_textual_file_header = np.dtype([
 ('TFH1', '<a80'),
 ('TFH2', (np.str_,80)),
