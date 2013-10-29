@@ -94,6 +94,130 @@ class SU_header(tb.IsDescription):
 	UnassignedInt1 =  tb.Int32Col()
 	ns1 =  tb.Int32Col()
 	
+<<<<<<< HEAD
+=======
+class segy_file_header(tb.IsDescription):
+	TFH1 = tb.StringCol(80)
+	TFH2 = tb.StringCol(80)
+	TFH3 = tb.StringCol(80)
+	TFH4 = tb.StringCol(80)
+	TFH5 = tb.StringCol(80)
+	TFH6 = tb.StringCol(80)
+	TFH7 = tb.StringCol(80)
+	TFH8 = tb.StringCol(80)
+	TFH9 = tb.StringCol(80)
+	TFH10 = tb.StringCol(80)
+	TFH11 = tb.StringCol(80)
+	TFH12 = tb.StringCol(80)
+	TFH13 = tb.StringCol(80)
+	TFH14 = tb.StringCol(80)
+	TFH15 = tb.StringCol(80)
+	TFH16 = tb.StringCol(80)
+	TFH17 = tb.StringCol(80)
+	TFH18 = tb.StringCol(80)
+	TFH19 = tb.StringCol(80)
+	TFH20 = tb.StringCol(80)
+	TFH21 = tb.StringCol(80)
+	TFH22 = tb.StringCol(80)
+	TFH23 = tb.StringCol(80)
+	TFH24 = tb.StringCol(80)
+	TFH25 = tb.StringCol(80)
+	TFH26 = tb.StringCol(80)
+	TFH27 = tb.StringCol(80)
+	TFH28 = tb.StringCol(80)
+	TFH29 = tb.StringCol(80)
+	TFH30 = tb.StringCol(80)
+	TFH31 = tb.StringCol(80)
+	TFH32 = tb.StringCol(80)
+	TFH33 = tb.StringCol(80)
+	TFH34 = tb.StringCol(80)
+	TFH35 = tb.StringCol(80)
+	TFH36 = tb.StringCol(80)
+	TFH37 = tb.StringCol(80)
+	TFH38 = tb.StringCol(80)
+	TFH39 = tb.StringCol(80)
+	TFH40 = tb.StringCol(80)
+
+segy_binary_header=np.dtype([
+	('jobid','>i4'),
+	('lino','>i4'),
+	('reno','>i4'),
+	('ntrpr','>i2'),
+	('nart','>i2'),
+	('hdt','>u2'),
+	('dto','>u2'),
+	('hns','>u2'),
+	('nso','>u2'),
+	('format','>i2'),
+	('fold','>i2'),
+	('tsort','>i2'),
+	('vscode','>i2'),
+	('hsfs','>i2'),
+	('hsfe','>i2'),
+	('hslen','>i2'),
+	('hstyp','>i2'),
+	('schn','>i2'),
+	('hstas','>i2'),
+	('hstae','>i2'),
+	('htatyp','>i2'),
+	('hcorr','>i2'),
+	('bgrcv','>i2'),
+	('rcvm','>i2'),
+	('mfeet','>i2'),
+	('polyv','>i2'),
+	('vpol','>i2'),
+	('unassigned_1',(np.str_,240)),
+	('segyrev','>i2'),
+	('fixedlen','>i2'),
+	('numhdr','>i2'),
+	('unassigned_2',(np.str_,94)),
+])
+
+
+segy_textual_file_header = np.dtype([
+('TFH1', '<a80'),
+('TFH2', (np.str_,80)),
+('TFH3', (np.str_,80)),
+('TFH4', (np.str_,80)),
+('TFH5', (np.str_,80)),
+('TFH6', (np.str_,80)),
+('TFH7', (np.str_,80)),
+('TFH8', (np.str_,80)),
+('TFH9', (np.str_,80)),
+('TFH10', (np.str_,80)),
+('TFH11', (np.str_,80)),
+('TFH12', (np.str_,80)),
+('TFH13', (np.str_,80)),
+('TFH14', (np.str_,80)),
+('TFH15', (np.str_,80)),
+('TFH16', (np.str_,80)),
+('TFH17', (np.str_,80)),
+('TFH18', (np.str_,80)),
+('TFH19', (np.str_,80)),
+('TFH20', (np.str_,80)),
+('TFH21', (np.str_,80)),
+('TFH22', (np.str_,80)),
+('TFH23', (np.str_,80)),
+('TFH24', (np.str_,80)),
+('TFH25', (np.str_,80)),
+('TFH26', (np.str_,80)),
+('TFH27', (np.str_,80)),
+('TFH28', (np.str_,80)),
+('TFH29', (np.str_,80)),
+('TFH30', (np.str_,80)),
+('TFH31', (np.str_,80)),
+('TFH32', (np.str_,80)),
+('TFH33', (np.str_,80)),
+('TFH34', (np.str_,80)),
+('TFH35', (np.str_,80)),
+('TFH36', (np.str_,80)),
+('TFH37', (np.str_,80)),
+('TFH38', (np.str_,80)),
+('TFH39', (np.str_,80)),
+('TFH40', (np.str_,80)),
+])
+	
+>>>>>>> origin
 su_header_dtype = np.dtype([
 ('tracl', np.int32),
 ('tracr', np.int32),
