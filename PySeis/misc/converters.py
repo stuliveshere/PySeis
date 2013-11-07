@@ -1,5 +1,7 @@
 import numpy as np
 
+#from http://stackoverflow.com/questions/7125890/python-unpack-ibm-32-bit-float-point
+#may need rewriting for vectorisation
 def ibm2ieee(ibm): 
     """ Converts an IBM floating point number into IEEE format. """ 
 
