@@ -50,7 +50,7 @@ with open(file, 'rb') as f:
 	for chunk in iter(lambda: f.read(240), ""):
 		th = np.fromstring(chunk, dtype=d.segy_trace_header_dtype).byteswap()
 		trace_header.append(th)
-		td = np.array([c.ibm2ieee(a) for a in np.nditer(np.fromstring(f.read(ns*4), dtype='>i4'))]).reshape(1,ns) #soooo slow!
+		td = c.ibm2ieee(np.fromstring(f.read(ns*4), dtype='>i4')).reshape(1,ns) #soooo slow!
 		trace_data.append(td)
 		print time.clock() - start
 		start = time.clock()
