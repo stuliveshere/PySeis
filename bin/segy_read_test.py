@@ -46,16 +46,13 @@ with open(file, 'rb') as f:
 	bh = np.fromstring(bh, dtype=d.segy_binary_header_dtype).byteswap()
 	binary_header.append(bh)
 	
-	start = time.clock()
 	for chunk in iter(lambda: f.read(240), ""):
 		th = np.fromstring(chunk, dtype=d.segy_trace_header_dtype).byteswap()
 		trace_header.append(th)
-		td = c.ibm2ieee(np.fromstring(f.read(ns*4), dtype='>i4')).reshape(1,ns) #soooo slow!
+		td = c.ibm2ieee(np.fromfile(f, dtype='>i4', count=ns)).reshape(1,ns)
 		trace_data.append(td)
-		print time.clock() - start
-		start = time.clock()
 		
-		h5file.flush()
+h5file.flush()
 
 	
 
