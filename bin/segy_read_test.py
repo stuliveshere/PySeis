@@ -32,20 +32,21 @@ trace_data = h5file.create_earray(     line1,
 							atom = tb.Float32Atom(), 
 							shape = (0,ns),
 							title = "Trace Header", 
-							filters = tb.Filters(complevel=5, complib='zlib'))
+							filters = tb.Filters(complevel=1, complib='lzo'))
 							
 
 
 with open(file, 'rb') as f:
-	for i in range(40):
-		fh = f.read(80).decode('EBCDIC-CP-BE')
-		fh = np.fromstring(fh, dtype=(np.str_,   80))
-		file_header.append(fh)
-		
+	#read in EBCDIC header and write to table
+	fh = f.read(3200).decode('EBCDIC-CP-BE').encode('ascii')
+	file_header.append(np.fromstring(fh, dtype='S80'))
+	
+	#repeat for binary header
 	bh = f.read(400)	
 	bh = np.fromstring(bh, dtype=d.segy_binary_header_dtype).byteswap()
 	binary_header.append(bh)
 	
+	#read in trace headers and traces
 	for chunk in iter(lambda: f.read(240), ""):
 		th = np.fromstring(chunk, dtype=d.segy_trace_header_dtype).byteswap()
 		trace_header.append(th)
@@ -55,7 +56,6 @@ with open(file, 'rb') as f:
 h5file.flush()
 
 	
-
-
+	
 
 
