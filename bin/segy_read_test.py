@@ -9,7 +9,7 @@ import time
 
 
 #open stuff 
-file = '../data/sample.sgy'
+#~ file = '../data/sample.sgy'
 
 
 #initialise database
@@ -50,7 +50,8 @@ with open(file, 'rb') as f:
 	for chunk in iter(lambda: f.read(240), ""):
 		th = np.fromstring(chunk, dtype=d.segy_trace_header_dtype).byteswap()
 		trace_header.append(th)
-		td = c.ibm2ieee(np.fromfile(f, dtype='>i4', count=ns)).reshape(1,ns)
+		#~ td = c.ibm2ieee(np.fromfile(f, dtype='>i4', count=ns)).reshape(1,ns)
+		td = np.fromfile(f, dtype='>i4', count=ns).reshape(1,ns)
 		trace_data.append(td)
 		
 h5file.flush()
