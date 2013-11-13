@@ -132,20 +132,7 @@ segy_trace_header_dtype = np.dtype([
     ])
 
 
-#note the mandatory header is little endian... it is not directly coupled to file IO
-segy_mandatory_header_dtype = np.dtype([
-    ('ntrpr', 'i2'), # number of data traces per record
-    ('nart', 'i2'), # number of auxiliary traces per record
-    ('hdt', 'u2'), # sample interval in microsecs for this reel
-    ('hns', 'u2'), #  number of samples per trace for this reel
-    ('format', 'i2'), # 1 = 4-byte IBM floating-point, 5 = 4-byte IEEE floating-point
-    ('fold', 'i2'), # CDP fold expected per CDP ensemble
-    ('tsort', 'i2'), # trace sorting code: 1 = As recorded (no sorting) 5 = Common source point
-    ('mfeet', 'i2'), # strongly recommended measurement system code = 1
-    ('segyrev', 'i2'), # 0x0100
-    ('fixedlen', 'i2'), # A value of one indicates that all traces in this SEG Y file are guaranteed to have the same sample interval 
-    ('numhdr', 'i2'), # Number Extended Textual File Header records following 
-  ])  
+
 
 keylist = 	segy_textual_header_dtype.names + \
 		segy_binary_header_dtype.names + \

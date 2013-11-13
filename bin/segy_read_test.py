@@ -1,6 +1,7 @@
 #!/usr/bin/env python2.7
-import  PySeis.segy as d
+import PySeis.segy as d
 import PySeis.misc as c
+import PySeis.h5 as h
 import PySeis.su as su
 import numpy as np
 import matplotlib.pyplot as pylab
@@ -11,77 +12,40 @@ import os
 
 #~ #open stuff 
 #~ input = '../data/sample.sgy'
-input = [file for file in os.listdir('/home/sfletcher/SOSIETST') if '.sgy' in file]
+os.chdir('../data')
+input = [file for file in os.listdir('.') if '.sgy' in file]
 
+#open database
+h5 = h.h5(filename='test.h5')
 
-#~ #initialise master database
-h5file = tb.openFile("../data/test1.h5", mode = "w", title = "Test file")
-
-
-line1 = h5file.createGroup("/", "line1", 'Line 1 Survey')
-file_header = h5file.createTable(line1, 'FH', d.segy_textual_header_dtype, "EBCDIC File Header")
-binary_header = h5file.createTable(line1, 'BH', d.segy_binary_header_dtype, "Binary File Header")
-trace_header = h5file.createTable(line1, 'TH', d.segy_trace_header_dtype, "Trace Header")
-mandatory_header = h5file.createTable(line1, 'MH', d.segy_mandatory_header_dtype, "Mandatory Header")
-
-
-#initialise mandatory header
-default_values = np.zeros(1, dtype=d.segy_mandatory_header_dtype)
-default_values[0] = (0,0,0,0,5,0,1,1,256,1,0) #32 bit ieee floats, fixed lenth, no extended text headers
-h5file.root.line1.MH.append(default_values) #this header is little endian
-	
-
-
-
-
-
-
-
-#~ #we really need to reach in and find the number of samples so we can initialise the trace dataset
-#~ #first ns will be 40*80 + 400 + 114 = 3714
-#~ #or i could be lazy, read the whole of the first trace header and lift out ns
-
-#~ with open(input, 'rb') as f:
-	#~ f.seek(3600)
-	#~ ns = np.array(f.read(240), dtype=d.segy_trace_header_dtype)['ns']
-	
-#~ trace_data = h5file.create_earray(     "line1",
-							#~ name = 'TD',
-							#~ atom = tb.Float32Atom(), 
-							#~ shape = (0,ns),
-							#~ title = "Trace Header", 
-							#~ filters = tb.Filters(complevel=1, complib='zlib'))
-							
-
-
-#~ with open(input, 'rb') as f:
-	#read in EBCDIC header and write to table
-	#~ fh = f.read(3200).decode('EBCDIC-CP-BE').encode('ascii')
-	#~ file_header.append(np.fromstring(fh, dtype=d.segy_textual_header_dtype))
-	
-	#repeat for binary header
-	#~ bh = f.read(400)	
-	#~ bh = np.fromstring(bh, dtype=d.segy_binary_header_dtype).byteswap()
-	#~ binary_header.append(bh)
-	
-	#read in trace headers and traces
-	#~ for chunk in iter(lambda: f.read(240), ""):
-		#~ th = np.fromstring(chunk, dtype=d.segy_trace_header_dtype).byteswap()
-		#~ trace_header.append(th)
-		#~ td = c.ibm2ieee(np.fromfile(f, dtype='>i4', count=ns)).reshape(1,ns)
-		#~ td = np.fromfile(f, dtype='>f4', count=ns).reshape(1,ns)
-		#~ trace_data.append(td)
+#initialise project. this time it will be a separate project per file
+for file in input:
+	with open(file, 'rb') as f:
+		f.seek(3600)
+		ns = np.array(f.read(240), dtype=d.segy_trace_header_dtype)['ns']
+		h5.init(file.split('.')[0], ns=ns, segy=True)
 		
-#~ h5file.flush()
+		f.seek(0)
+		#read in EBCDIC header and write to table
+		fh = f.read(3200).decode('EBCDIC-CP-BE').encode('ascii')
+		h5.fh.append(np.fromstring(fh, dtype=d.segy_textual_header_dtype))
+		
+		#repeat for binary header
+		bh = f.read(400)	
+		bh = np.fromstring(bh, dtype=d.segy_binary_header_dtype).byteswap()
+		h5.bh.append(bh)
+		
+		#read in trace headers and traces
+		for chunk in iter(lambda: f.read(240), ""):
+			th = np.fromstring(chunk, dtype=d.segy_trace_header_dtype).byteswap()
+			h5.th.append(th)
+			#~ td = c.ibm2ieee(np.fromfile(f, dtype='>i4', count=ns)).reshape(1,ns)
+			td = np.fromfile(f, dtype='>f4', count=ns).reshape(1,ns)
+			h5.td.append(td)
+		
 
-#bit of temporary code to overwrite segy text headers
-#~ tfh = open('../templates/EBCDIC.template').readlines()
-#~ tfh = ''.join([a.strip().ljust(80) for a in tfh])
-#~ print tfh
-#~ with open(input, 'r+b') as f:
-	#~ f.seek(0)
-	#~ f.write(tfh.encode('EBCDIC-CP-BE'))
-	
+
+
 #how to write out h5 table
 #~ output = '../data/test.sgy'
 #~ with open(output, 'wb') as f:
@@ -103,26 +67,6 @@ h5file.root.line1.MH.append(default_values) #this header is little endian
 	
 
 
-#~ with open(output, 'rb') as f:
-	#read in EBCDIC header and write to table
-	#~ fh = f.read(3200).decode('EBCDIC-CP-BE').encode('ascii')
-	#~ file_header.append(np.fromstring(fh, dtype=d.segy_textual_header_dtype))
-	
-	#repeat for binary header
-	#~ bh = f.read(400)	
-	#~ print len(bh)
-	#~ bh = np.fromstring(bh, dtype=d.segy_binary_header_dtype).byteswap()
-	#~ binary_header.append(bh)
-	
-	#read in trace headers and traces
-	#~ for chunk in iter(lambda: f.read(240), ""):
-		#~ th = np.fromstring(chunk, dtype=d.segy_trace_header_dtype).byteswap()
-		#~ trace_header.append(th)
-		#~ td = c.ibm2ieee(np.fromfile(f, dtype='>i4', count=ns)).reshape(1,ns)
-		#~ td = np.fromfile(f, dtype='>i4', count=ns).reshape(1,ns)
-		#~ trace_data.append(td)
-
-#~ h5file.flush()
 	
 
 
