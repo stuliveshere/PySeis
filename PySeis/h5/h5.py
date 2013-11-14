@@ -42,7 +42,16 @@ class h5: #might be better to inheret a pytables object
 		
 		self.h5file.flush()
 		
-		
+
+
+class test(tb.Table):
+	def __init__(self, file_name, table_name, description=None,
+		group_name='default', mode='a', title="", filters=_filter,
+		expectedrows=512000):
+
+		f = tables.openFile(file_name, mode)
+	
 if __name__ == "__main__":
-	a = h5(filename='test.h5')
+	a = test()
+	#~ a = h5(filename='test.h5')
 	
