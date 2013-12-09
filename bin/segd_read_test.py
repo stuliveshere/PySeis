@@ -7,17 +7,17 @@ def bcd(uints):
 	c = np.unpackbits(uints).reshape(-1,4)
 	d = np.zeros_like(c)
 	e =  np.hstack((d, c))
-
 	f = np.packbits(e)
-	return f
+	f[f == 15] = 0
+	return ''.join(f.astype(np.str).tolist())
 	
 
 a = open(file, 'r').read(32)
 b = np.fromstring(a, dtype=np.uint8)
-print bcd(b)
+c = bcd(b)
 
-k = np.array(bcd(b), dtype=d.segd_general_header)
-print k[0]
+print np.array(c, dtype = d.segd_general_header)
+
 
 
 
