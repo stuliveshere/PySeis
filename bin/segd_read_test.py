@@ -1,35 +1,52 @@
 import numpy as np
 import PySeis.segd.definitions as d
 
-file = '../data/sample.segd'
-
-def bcd(uints):
-	c = np.unpackbits(uints).reshape(-1,4)
-	d = np.zeros_like(c)
-	e =  np.hstack((d, c))
-	f = np.packbits(e).astype(np.uint8)
-	return f
+class segdReader():
+	'''
+	reads all headers into holding dictionaries.
+	generates file layout dictionary
+	so traces can be read in with ease.
+	'''
+	def __init__(self, filename):
+		self.handle = open(filename, 'rb')
+		print self.read_general_header_1()
+		
+		
+	def read_general_header_1(self):
+		self.handle.seek(0)
+		bytes = np.fromfile(self.handle, dtype=np.uint8, count=32)
+		nibbles = self.bcd(bytes)
+		datastore = {}
+		indice = 0
+		for key, value in d.segd_general_header_list:
+			x =  nibbles[indice:indice+value]
+			indice += value
+			datastore[key] = ''.join(x)
+		if datastore['format'] not in d.segd_allowed_formats:
+			#raise exception
+			pass
+		return datastore
+		
+	def read_general_header_2(self):
+		pass
+		
+	def read_scan_header(self):
+		pass
+		
+	def read_trace_header(self):
+		pass
 	
-def bcd2(uints):
-	n = uints & 0xf
-	m =  (uints  >> 4) & 0xf
-	return np.dstack([m, n]).flatten()	
-
-a = open(file, 'r').read(32)
-b = np.fromstring(a, dtype=np.uint8)
-c = bcd(b).astype('S').tolist()
-print c
-r = bcd2(b)
-
-s = d.segd_general_header_list
-header = {}
-
-for key, value in s:
-	x =  c[:value]
-	c = c[value:]
-	header[key] = ''.join(x)
-print header
+	def bcd(self, uints):
+		n = uints & 0xf
+		m =  (uints  >> 4) & 0xf
+		return np.dstack([m, n]).flatten().astype('S2')	
 	
 
+		#~ header = {}
 
+
+		#~ print header
+		
+if __name__ == '__main__':
+	a = segdReader('../data/sample.segd')
 

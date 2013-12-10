@@ -51,3 +51,15 @@ segd_general_header_list =[
 ('EC', 2),
 ('EX', 2),
 ]
+
+segd_allowed_formats = [
+8015, 
+8022, 
+8024, 
+8036,
+8038,
+8042,
+8044,
+8048,
+8058,
+]
