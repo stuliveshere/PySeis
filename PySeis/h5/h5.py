@@ -18,7 +18,7 @@ class h5: #might be better to inheret a pytables object
 		#for now we just overwrite with no checks. probably want to change this later.
 		self.h5file = tb.openFile(filename, mode = "w", title=title)
 		
-	def init(self, node, ns, segy=False):
+	def init(self, node, ns,input='segy'):
 		
 		self.node = self.h5file.createGroup("/", node, 'PySeis Node')
 		self.mh = self.h5file.createTable(self.node, 'MH', mandatory_header_dtype, "Mandatory Header")
@@ -35,7 +35,7 @@ class h5: #might be better to inheret a pytables object
 							filters = tb.Filters(complevel=1, complib='zlib'),
 							expectedrows=100000)
 							
-		if segy:
+		if input =='segy':
 			self.fh = self.h5file.createTable(self.node, 'FH', d.segy_textual_header_dtype, "EBCDIC File Header")
 			self.bh = self.h5file.createTable(self.node, 'BH', d.segy_binary_header_dtype, "Binary File Header")
 			self.th = self.h5file.createTable(self.node, 'TH', d.segy_trace_header_dtype, "Trace Header")
