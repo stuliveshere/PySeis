@@ -2,10 +2,11 @@ import numpy as np
 import string
 import sys
 import struct
-import numpy as np
+import tables as tb
 import math
+import os
 
-segy_textual_header_dtype = np.dtype([('TFH', (np.str_,   3200))])
+segy_textual_header_dtype = np.dtype([('TFH', (np.str_,   80))])
 
 segy_binary_header_dtype = np.dtype([
     ('jobid', '>i4'),
@@ -146,14 +147,18 @@ keylist = 	segy_textual_header_dtype.names + \
 
 
 class segy:
-	def __init__(self, database, filename=None, **kwargs):
-		if not set(kwargs.keys()).issubset(keylist):
-			raise Exception("Invalid key in segy kwargs")
-		if not filename: 
-			self.initialiseFramework()
-		else:
-			self.loadFramework()
-			
+	def __init__(self, database, **kwargs):
+		#~ if not set(kwargs.keys()).issubset(keylist):
+			#~ raise Exception("Invalid key in segy kwargs")
+		#~ if not filename: 
+			#~ self.initialiseFramework()
+		#~ else:
+			#~ self.loadFramework()
+		
+		self.db=database	
+		
+		
+		
 	def initialiseFramework(self):
 		
 		
@@ -166,20 +171,70 @@ class segy:
 		pass
 		#pull a few key items in from segy file
 		
-	def importFIle(self, h5):
-		pass
+	def load(self, filelist):
+		for file in filelist:
+			#group name, ie line name, from file name
+			group = file.split('.')[0]
+			#create a h5 node
+			node = db.createGroup("/", group, 'PySeis Node')
+
+			with open(file, 'rb') as f:
+				print file
+				#create EBCDC tab3e
+				fh = self.db.createTable(node, 'FH', segy_textual_header_dtype, "EBCDIC File Header")
+				#import EBCDC
+				EBCDC = f.read(3200).decode('EBCDIC-CP-BE').encode('ascii')
+				fh.append(np.fromstring(EBCDC, dtype=segy_textual_header_dtype))
+				
+				#import binary header
+				bh = db.createTable(node, 'BH', segy_binary_header_dtype, "Binary File Header")
+				binary = np.fromstring(f.read(400), dtype=segy_binary_header_dtype)
+				#endian sanity checks. this is pretty crude and will need revisting.
+				try:
+					assert 0 < binary['format'] < 9
+				except AssertionError:
+					binary = binary.newbyteorder('S')
+				assert 0 < binary['format'] < 9				
+				bh.append(binary.byteswap())
+					
+				#create tables for trace headers and traces
+				th = self.db.createTable(node, 'TH', segy_trace_header_dtype, "Trace Header")
+				td = self.db.create_earray(node,
+							name = 'TD',
+							atom = tb.Float32Atom(), 
+							shape = (0,binary['hns']),
+							title = "Trace Header", 
+							filters = tb.Filters(complevel=1, complib='zlib'),
+							expectedrows=100000)
+				#read in trace headers and traces
+				for chunk in iter(lambda: f.read(240), ""):
+					header = np.fromstring(chunk, dtype=segy_trace_header_dtype)
+					try:
+						assert header['ns'] == binary['hns'] 
+					except AssertionError:
+						header = header.newbyteorder('S')
+					assert header['ns'] == binary['hns'] 		
+					th.append(header.byteswap())
+					
+					if binary['format'] == 1:
+						data = self.ibm2ieee(np.fromfile(f, dtype='>i4', count=header['ns'])).reshape(1,header['ns'])
+					elif binary['format'] == 5:
+						data = np.fromfile(f, dtype='>f4', count=header['ns']).reshape(1,header['ns'])
+					td.append(data)
+		
+	
 		
 	def exportFIle(self, filename):
 		pass
 	
-	def ibm2ieee(ibm): 
+	def ibm2ieee(self, ibm): 
 	    s = ibm >> 31 & 0x01 
 	    exp = ibm >> 24 & 0x7f 
 	    fraction = (ibm & 0x00ffffff).astype(np.float32) / 16777216.0
 	    ieee = (1.0 - 2.0 * s) * fraction * np.power(np.float32(16.0), exp - 64.0) 
 	    return ieee 
 
-	def ieee2ibm(ieee): 
+	def ieee2ibm(self, ieee): 
 	    ieee = ieee.astype(np.float32)
 	    expmask = 0x7f800000 
 	    signmask = 0x80000000 
@@ -265,5 +320,10 @@ class segy:
 
 		
 if __name__ == '__main__':
-	a = segy()
+	os.chdir('../../data/')
+	filelist = [a for a in os.listdir('.') if '.sgy' in a]
+	db = tb.openFile('test.h5', mode = "w", title='test')
+	
+	a = segy(db)
+	a.load(filelist)
 	
