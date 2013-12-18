@@ -9,132 +9,132 @@ import os
 segy_textual_header_dtype = np.dtype([('TFH', (np.str_,   80))])
 
 segy_binary_header_dtype = np.dtype([
-    ('jobid', '>i4'),
-    ('lino', '>i4'),
-    ('reno', '>i4'),
-    ('ntrpr', '>i2'), # mandatory (prestack)
-    ('nart', '>i2'), # mandatory (prestack)
-    ('hdt', '>u2'), # mandatory (all)
-    ('dto', '>u2'),
-    ('hns', '>u2'), # mandatory (all)
-    ('nso', '>u2'),
-    ('format', '>i2'), # mandatory (all)
-    ('fold', '>i2'), # strongly recommended 
-    ('tsort', '>i2'), # strongly recommended 
-    ('vscode', '>i2'),
-    ('hsfs', '>i2'),
-    ('hsfe', '>i2'),
-    ('hslen', '>i2'),
-    ('hstyp', '>i2'),
-    ('schn', '>i2'),
-    ('hstas', '>i2'),
-    ('hstae', '>i2'),
-    ('htatyp', '>i2'),
-    ('hcorr', '>i2'),
-    ('bgrcv', '>i2'),
-    ('rcvm', '>i2'),
-    ('mfeet', '>i2'), # strongly recommended 
-    ('polyv', '>i2'),
-    ('vpol', '>i2'),
+    ('jobid', 'i4'),
+    ('lino', 'i4'),
+    ('reno', 'i4'),
+    ('ntrpr', 'i2'), # mandatory (prestack)
+    ('nart', 'i2'), # mandatory (prestack)
+    ('hdt', 'u2'), # mandatory (all)
+    ('dto', 'u2'),
+    ('hns', 'u2'), # mandatory (all)
+    ('nso', 'u2'),
+    ('format', 'i2'), # mandatory (all)
+    ('fold', 'i2'), # strongly recommended 
+    ('tsort', 'i2'), # strongly recommended 
+    ('vscode', 'i2'),
+    ('hsfs', 'i2'),
+    ('hsfe', 'i2'),
+    ('hslen', 'i2'),
+    ('hstyp', 'i2'),
+    ('schn', 'i2'),
+    ('hstas', 'i2'),
+    ('hstae', 'i2'),
+    ('htatyp', 'i2'),
+    ('hcorr', 'i2'),
+    ('bgrcv', 'i2'),
+    ('rcvm', 'i2'),
+    ('mfeet', 'i2'), # strongly recommended 
+    ('polyv', 'i2'),
+    ('vpol', 'i2'),
     ('unassigned_1', (np.str_,   240)),
-    ('segyrev', '>i2'), # mandatory (all)
-    ('fixedlen', '>i2'), # mandatory (all)
-    ('numhdr', '>i2'), # mandatory (all)
+    ('segyrev', 'i2'), # mandatory (all)
+    ('fixedlen', 'i2'), # mandatory (all)
+    ('numhdr', 'i2'), # mandatory (all)
     ('unassigned_2', (np.str_,   94)),
 ])
 
 segy_trace_header_dtype = np.dtype([
-    ('tracl',  '>i4'), # strongly recommended 
-    ('tracr',  '>i4'),
-    ('fldr',   '>i4'), # strongly recommended 
-    ('tracf',  '>i4'), # strongly recommended 
-    ('ep',     '>i4'),
-    ('cdp',    '>i4'),
-    ('cdpt',   '>i4'),
-    ('trid',   '>i2'), # strongly recommended 
-    ('nvs',    '>i2'),
-    ('nhs',    '>i2'),
-    ('duse',   '>i2'),
-    ('offset', '>i4'),
-    ('gelev',  '>i4'),
-    ('selev',  '>i4'),
-    ('sdepth', '>i4'),
-    ('gdel',   '>i4'),
-    ('sdel',   '>i4'),
-    ('swdep',  '>i4'),
-    ('gwdep',  '>i4'),
-    ('scalel', '>i2'),
-    ('scalco', '>i2'),
-    ('sx',     '>i4'),
-    ('sy',     '>i4'),
-    ('gx',     '>i4'),
-    ('gy',     '>i4'),
-    ('counit', '>i2'),
-    ('wevel',   '>i2'),
-    ('swevel',  '>i2'),
-    ('sut',     '>i2'),
-    ('gut',     '>i2'),
-    ('sstat',   '>i2'),
-    ('gstat',   '>i2'),
-    ('tstat',   '>i2'),
-    ('laga',    '>i2'),
-    ('lagb',    '>i2'),
-    ('delrt',   '>i2'),
-    ('muts',    '>i2'),
-    ('mute',    '>i2'),
-    ('ns',      '>i2'), # strongly recommended 
-    ('dt',      '>i2'), # strongly recommended 
-    ('gain',    '>i2'),
-    ('igc',    '>i2'),
-    ('igi',    '>i2'),
-    ('corr',   '>i2'),
-    ('sfs',    '>i2'),
-    ('sfe',    '>i2'),
-    ('slen',   '>i2'),
-    ('styp',   '>i2'),
-    ('stas',   '>i2'),
-    ('stae',   '>i2'),
-    ('tatyp',  '>i2'),
-    ('afilf',  '>i2'),
-    ('afils',  '>i2'),
-    ('nofilf', '>i2'),
-    ('nofils', '>i2'),
-    ('lcf',    '>i2'),
-    ('hcf',    '>i2'),
-    ('lcs',    '>i2'),
-    ('hcs',    '>i2'),
-    ('year',   '>i2'),
-    ('day',    '>i2'),
-    ('hour',   '>i2'),
-    ('minute', '>i2'),
-    ('sec',    '>i2'),
-    ('timbas', '>i2'),
-    ('trwf',   '>i2'),
-    ('grnors', '>i2'),
-    ('grnofr', '>i2'),
-    ('grnlof', '>i2'),
-    ('gaps',   '>i2'),
-    ('otrav',  '>i2'),
-    ('cdpx',   '>i4'),
-    ('cdpy',   '>i4'),
-    ('iline',  '>i4'),
-    ('xline',  '>i4'),
-    ('shnum',  '>i4'),
-    ('shsca',  '>i2'),
-    ('tval',   '>i2'),
-    ('tconst4', '>i4'),
-    ('tconst2', '>i2'),
-    ('tunits', '>i2'),
-    ('device', '>i2'),
-    ('tscalar', '>i2'),
-    ('stype',  '>i2'),
-    ('sendir', '>i4'),
-    ('unknown', '>i2'),
-    ('smeas4', '>i4'),
-    ('smeas2', '>i2'),
-    ('smeasu', '>i2'),
-    ('unass1', '>i4'),
-    ('unass2', '>i4'),
+    ('tracl',  'i4'), # strongly recommended 
+    ('tracr',  'i4'),
+    ('fldr',   'i4'), # strongly recommended 
+    ('tracf',  'i4'), # strongly recommended 
+    ('ep',     'i4'),
+    ('cdp',    'i4'),
+    ('cdpt',   'i4'),
+    ('trid',   'i2'), # strongly recommended 
+    ('nvs',    'i2'),
+    ('nhs',    'i2'),
+    ('duse',   'i2'),
+    ('offset', 'i4'),
+    ('gelev',  'i4'),
+    ('selev',  'i4'),
+    ('sdepth', 'i4'),
+    ('gdel',   'i4'),
+    ('sdel',   'i4'),
+    ('swdep',  'i4'),
+    ('gwdep',  'i4'),
+    ('scalel', 'i2'),
+    ('scalco', 'i2'),
+    ('sx',     'i4'),
+    ('sy',     'i4'),
+    ('gx',     'i4'),
+    ('gy',     'i4'),
+    ('counit', 'i2'),
+    ('wevel',   'i2'),
+    ('swevel',  'i2'),
+    ('sut',     'i2'),
+    ('gut',     'i2'),
+    ('sstat',   'i2'),
+    ('gstat',   'i2'),
+    ('tstat',   'i2'),
+    ('laga',    'i2'),
+    ('lagb',    'i2'),
+    ('delrt',   'i2'),
+    ('muts',    'i2'),
+    ('mute',    'i2'),
+    ('ns',      'i2'), # strongly recommended 
+    ('dt',      'i2'), # strongly recommended 
+    ('gain',    'i2'),
+    ('igc',    'i2'),
+    ('igi',    'i2'),
+    ('corr',   'i2'),
+    ('sfs',    'i2'),
+    ('sfe',    'i2'),
+    ('slen',   'i2'),
+    ('styp',   'i2'),
+    ('stas',   'i2'),
+    ('stae',   'i2'),
+    ('tatyp',  'i2'),
+    ('afilf',  'i2'),
+    ('afils',  'i2'),
+    ('nofilf', 'i2'),
+    ('nofils', 'i2'),
+    ('lcf',    'i2'),
+    ('hcf',    'i2'),
+    ('lcs',    'i2'),
+    ('hcs',    'i2'),
+    ('year',   'i2'),
+    ('day',    'i2'),
+    ('hour',   'i2'),
+    ('minute', 'i2'),
+    ('sec',    'i2'),
+    ('timbas', 'i2'),
+    ('trwf',   'i2'),
+    ('grnors', 'i2'),
+    ('grnofr', 'i2'),
+    ('grnlof', 'i2'),
+    ('gaps',   'i2'),
+    ('otrav',  'i2'),
+    ('cdpx',   'i4'),
+    ('cdpy',   'i4'),
+    ('iline',  'i4'),
+    ('xline',  'i4'),
+    ('shnum',  'i4'),
+    ('shsca',  'i2'),
+    ('tval',   'i2'),
+    ('tconst4', 'i4'),
+    ('tconst2', 'i2'),
+    ('tunits', 'i2'),
+    ('device', 'i2'),
+    ('tscalar', 'i2'),
+    ('stype',  'i2'),
+    ('sendir', 'i4'),
+    ('unknown', 'i2'),
+    ('smeas4', 'i4'),
+    ('smeas2', 'i2'),
+    ('smeasu', 'i2'),
+    ('unass1', 'i4'),
+    ('unass2', 'i4'),
     ])
 
 
@@ -171,7 +171,24 @@ class segy:
 		pass
 		#pull a few key items in from segy file
 		
-	def load(self, filelist):
+	def load(self, filelist, headers_only=False):
+		'''
+		imports a segy file to pytable.
+		note format header entry -must- be
+		set correctly for this to work
+		'''
+		
+		def readTrace(ns, handle, format):
+			if format == 1:
+				data = self.ibm2ieee(np.fromfile(handle, dtype='>i4', count=ns))
+			elif binary['format'] == 5:
+				data = np.fromfile(handle, dtype='>f4', count=ns)
+			data.reshape(1, ns)
+			print data.std()
+			print data.byteswap().std()
+			print ''
+			return data
+			
 		for file in filelist:
 			#group name, ie line name, from file name
 			group = file.split('.')[0]
@@ -190,12 +207,18 @@ class segy:
 				bh = db.createTable(node, 'BH', segy_binary_header_dtype, "Binary File Header")
 				binary = np.fromstring(f.read(400), dtype=segy_binary_header_dtype)
 				#endian sanity checks. this is pretty crude and will need revisting.
+
 				try:
 					assert 0 < binary['format'] < 9
 				except AssertionError:
-					binary = binary.newbyteorder('S')
+					binary = binary.byteswap()
+
 				assert 0 < binary['format'] < 9				
-				bh.append(binary.byteswap())
+				bh.append(binary)
+				
+				#insert file size sanity checks and create file map table
+				#file map table calculates the byte location of each item in the file
+				#to be used for overwrites/header_only cases
 					
 				#create tables for trace headers and traces
 				th = self.db.createTable(node, 'TH', segy_trace_header_dtype, "Trace Header")
@@ -204,25 +227,31 @@ class segy:
 							atom = tb.Float32Atom(), 
 							shape = (0,binary['hns']),
 							title = "Trace Header", 
-							filters = tb.Filters(complevel=1, complib='zlib'),
+							filters = tb.Filters(complevel=6, complib='zlib'),
 							expectedrows=100000)
+							
+				#read in first header and trace. do endian sanity checks
+				header = np.fromstring(chunk, dtype=segy_trace_header_dtype)
+				try:
+					assert header['ns'] == binary['hns'] 
+				except AssertionError:
+					header = header.byteswap()
+				assert header['ns'] == binary['hns'] 
+
+				
+				
 				#read in trace headers and traces
 				for chunk in iter(lambda: f.read(240), ""):
-					header = np.fromstring(chunk, dtype=segy_trace_header_dtype)
-					try:
-						assert header['ns'] == binary['hns'] 
-					except AssertionError:
-						header = header.newbyteorder('S')
-					assert header['ns'] == binary['hns'] 		
-					th.append(header.byteswap())
-					
-					if binary['format'] == 1:
-						data = self.ibm2ieee(np.fromfile(f, dtype='>i4', count=header['ns'])).reshape(1,header['ns'])
-					elif binary['format'] == 5:
-						data = np.fromfile(f, dtype='>f4', count=header['ns']).reshape(1,header['ns'])
-					td.append(data)
+					header = np.fromstring(chunk, dtype=segy_trace_header_dtype)		
+					th.append(header)
+					if not headers_only:
+
+						td.append(data)
+					else:
+						f.read(header['ns']*4)
 		
-	
+
+		
 		
 	def exportFIle(self, filename):
 		pass
@@ -325,5 +354,5 @@ if __name__ == '__main__':
 	db = tb.openFile('test.h5', mode = "w", title='test')
 	
 	a = segy(db)
-	a.load(filelist)
+	a.load(filelist, headers_only=False)
 	
