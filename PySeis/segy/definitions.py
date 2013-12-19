@@ -5,6 +5,9 @@ import struct
 import tables as tb
 import math
 import os
+import re
+
+delchars = ''.join(c for c in map(chr, range(256)) if not c.isalnum())
 
 segy_textual_header_dtype = np.dtype([('TFH', (np.str_,   80))])
 
@@ -178,22 +181,14 @@ class segy:
 		set correctly for this to work
 		'''
 		
-		def readTrace(ns, handle, format):
-			if format == 1:
-				data = self.ibm2ieee(np.fromfile(handle, dtype='>i4', count=ns))
-			elif binary['format'] == 5:
-				data = np.fromfile(handle, dtype='>f4', count=ns)
-			data.reshape(1, ns)
-			print data.std()
-			print data.byteswap().std()
-			print ''
-			return data
 			
-		for file in filelist:
+		for filename in filelist:
+			file = filename.strip()
 			#group name, ie line name, from file name
-			group = file.split('.')[0]
+			group = file.split('/')[-1].split('.')[0]
+			group = group.translate(None, delchars)
 			#create a h5 node
-			node = db.createGroup("/", group, 'PySeis Node')
+			node = self.db.createGroup("/", group, 'PySeis Node')
 
 			with open(file, 'rb') as f:
 				print file
@@ -204,7 +199,7 @@ class segy:
 				fh.append(np.fromstring(EBCDC, dtype=segy_textual_header_dtype))
 				
 				#import binary header
-				bh = db.createTable(node, 'BH', segy_binary_header_dtype, "Binary File Header")
+				bh = self.db.createTable(node, 'BH', segy_binary_header_dtype, "Binary File Header")
 				binary = np.fromstring(f.read(400), dtype=segy_binary_header_dtype)
 				#endian sanity checks. this is pretty crude and will need revisting.
 
@@ -230,26 +225,47 @@ class segy:
 							filters = tb.Filters(complevel=6, complib='zlib'),
 							expectedrows=100000)
 							
-				#read in first header and trace. do endian sanity checks
-				header = np.fromstring(chunk, dtype=segy_trace_header_dtype)
-				try:
-					assert header['ns'] == binary['hns'] 
-				except AssertionError:
-					header = header.byteswap()
-				assert header['ns'] == binary['hns'] 
-
-				
-				
 				#read in trace headers and traces
+				counts = 1e5
+				header_array = np.zeros(counts, dtype=segy_trace_header_dtype)
+				data_array = np.zeros(counts, dtype=('f4',binary['hns']))
+				counter = 0
 				for chunk in iter(lambda: f.read(240), ""):
-					header = np.fromstring(chunk, dtype=segy_trace_header_dtype)		
-					th.append(header)
-					if not headers_only:
+					header = np.fromstring(chunk, dtype=segy_trace_header_dtype)
 
-						td.append(data)
+					try:
+						assert header['ns'] == binary['hns'] 
+					except AssertionError:
+						header = header.newbyteorder('S')
+					try:
+						assert header['ns'] == binary['hns'] 
+					except AssertionError:
+						print header['ns'], binary['hns'] , binary['format']
+						header = header.newbyteorder('S')
+						print header['ns'], binary['hns'] , binary['format']
+						print f.tell()
+						
+					assert header['ns'] == binary['hns']   
+
+
+					if not headers_only:
+						if binary['format'] == 1:
+							data = self.ibm2ieee(np.fromfile(f, dtype='>i4', count=header['ns'])).reshape(1,header['ns'])
+						elif binary['format'] == 5:
+							data = np.fromfile(f, dtype='>f4', count=header['ns']).reshape(1,header['ns'])
 					else:
-						f.read(header['ns']*4)
-		
+						f.seek(header['ns']*4, 1)
+						
+					header_array[counter] = header	
+					data_array[counter] = data
+					counter += 1
+					if counter == 1e5: 
+						th.append(header_array.byteswap())
+						td.append(data_array)
+						counter = 0					
+					
+				th.append(header_array[:counter].byteswap())
+				td.append(data_array[:counter])
 
 		
 		
@@ -354,5 +370,5 @@ if __name__ == '__main__':
 	db = tb.openFile('test.h5', mode = "w", title='test')
 	
 	a = segy(db)
-	a.load(filelist, headers_only=False)
+	a.load(filelist, headers_only=True)
 	
