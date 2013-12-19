@@ -228,10 +228,10 @@ class segy:
 				#read in trace headers and traces
 				counts = 1e5
 				header_array = np.zeros(counts, dtype=segy_trace_header_dtype)
-				data_array = np.zeros(counts, dtype=('f4',binary['hns']))
+				if not headers_only: data_array = np.zeros(counts, dtype=('f4',binary['hns']))
 				counter = 0
 				for chunk in iter(lambda: f.read(240), ""):
-					header = np.fromstring(chunk, dtype=segy_trace_header_dtype)
+					header = np.fromstring(chunk, dtype=segy_trace_header_dtype).byteswap()
 
 					try:
 						assert header['ns'] == binary['hns'] 
@@ -257,15 +257,15 @@ class segy:
 						f.seek(header['ns']*4, 1)
 						
 					header_array[counter] = header	
-					data_array[counter] = data
+					if not headers_only: data_array[counter] = data
 					counter += 1
 					if counter == 1e5: 
 						th.append(header_array.byteswap())
-						td.append(data_array)
+						if not headers_only: td.append(data_array)
 						counter = 0					
 					
 				th.append(header_array[:counter].byteswap())
-				td.append(data_array[:counter])
+				if not headers_only: td.append(data_array[:counter])
 
 		
 		
