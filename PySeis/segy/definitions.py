@@ -174,7 +174,7 @@ class segy:
 		pass
 		#pull a few key items in from segy file
 		
-	def load(self, filelist, headers_only=False):
+	def load_separate(self, filelist, headers_only=False):
 		'''
 		imports a segy file to pytable.
 		note format header entry -must- be
@@ -214,59 +214,162 @@ class segy:
 				#insert file size sanity checks and create file map table
 				#file map table calculates the byte location of each item in the file
 				#to be used for overwrites/header_only cases
+				
+				ns = binary['hns']
+				f.seek(0, os.SEEK_END)
+				size = f.tell()
+				nt = (size-3600.0)/(240.0+ns*4.0)
+				assert nt % 1 == 0
+				
+				th_seeks = range(3600, size, 240.0+ns*4.0)
+				td_seeks = range(3600+240, size, 240.0+ns*4.0)
+				
+				assert size == td_seeks[-1]+ns*4.0
 					
 				#create tables for trace headers and traces
 				th = self.db.createTable(node, 'TH', segy_trace_header_dtype, "Trace Header")
 				td = self.db.create_earray(node,
 							name = 'TD',
 							atom = tb.Float32Atom(), 
-							shape = (0,binary['hns']),
+							shape = (0,ns),
 							title = "Trace Header", 
 							filters = tb.Filters(complevel=6, complib='zlib'),
-							expectedrows=100000)
+							expectedrows=nt)
 							
-				#read in trace headers and traces
+				#read in trace headers
 				counts = 1e5
 				header_array = np.zeros(counts, dtype=segy_trace_header_dtype)
-				if not headers_only: data_array = np.zeros(counts, dtype=('f4',binary['hns']))
 				counter = 0
-				for chunk in iter(lambda: f.read(240), ""):
-					header = np.fromstring(chunk, dtype=segy_trace_header_dtype).byteswap()
-
-					try:
-						assert header['ns'] == binary['hns'] 
-					except AssertionError:
-						header = header.newbyteorder('S')
-					try:
-						assert header['ns'] == binary['hns'] 
-					except AssertionError:
-						print header['ns'], binary['hns'] , binary['format']
-						header = header.newbyteorder('S')
-						print header['ns'], binary['hns'] , binary['format']
-						print f.tell()
-						
-					assert header['ns'] == binary['hns']   
-
-
-					if not headers_only:
-						if binary['format'] == 1:
-							data = self.ibm2ieee(np.fromfile(f, dtype='>i4', count=header['ns'])).reshape(1,header['ns'])
-						elif binary['format'] == 5:
-							data = np.fromfile(f, dtype='>f4', count=header['ns']).reshape(1,header['ns'])
-					else:
-						f.seek(header['ns']*4, 1)
-						
-					header_array[counter] = header	
-					if not headers_only: data_array[counter] = data
+				for locale in th_seeks:
+					f.seek(locale)
+					header_array[counter] = np.fromfile(f, count=1, dtype=segy_trace_header_dtype).byteswap()
 					counter += 1
-					if counter == 1e5: 
-						th.append(header_array.byteswap())
-						if not headers_only: td.append(data_array)
-						counter = 0					
-					
-				th.append(header_array[:counter].byteswap())
-				if not headers_only: td.append(data_array[:counter])
+					if counter == counts:
+						th.append(header_array)
+						counter = 0
+						header_array = np.zeros(counts, dtype=segy_trace_header_dtype)
+				th.append(header_array[:counter])		
+				
+				#~ if not headers_only: data_array = np.zeros(counts, dtype=('f4',binary['hns']))
+				#~ counter = 0
+				#~ for chunk in iter(lambda: f.read(240), ""):
+					#~ header = np.fromstring(chunk, dtype=segy_trace_header_dtype).byteswap()
 
+					#~ try:
+						#~ assert header['ns'] == binary['hns'] 
+					#~ except AssertionError:
+						#~ header = header.newbyteorder('S')
+					#~ try:
+						#~ assert header['ns'] == binary['hns'] 
+					#~ except AssertionError:
+						#~ print header['ns'], binary['hns'] , binary['format']
+						#~ header = header.newbyteorder('S')
+						#~ print header['ns'], binary['hns'] , binary['format']
+						#~ print f.tell()
+						
+					#~ assert header['ns'] == binary['hns']   
+
+
+					#~ if not headers_only:
+						#~ if binary['format'] == 1:
+							#~ data = self.ibm2ieee(np.fromfile(f, dtype='>i4', count=header['ns'])).reshape(1,header['ns'])
+						#~ elif binary['format'] == 5:
+							#~ data = np.fromfile(f, dtype='>f4', count=header['ns']).reshape(1,header['ns'])
+					#~ else:
+						#~ f.seek(header['ns']*4, 1)
+						
+					#~ header_array[counter] = header	
+					#~ if not headers_only: data_array[counter] = data
+					#~ counter += 1
+					#~ if counter == 1e5: 
+						#~ th.append(header_array)
+						#~ if not headers_only: td.append(data_array)
+						#~ counter = 0					
+					
+				#~ th.append(header_array[:counter])
+				#~ if not headers_only: td.append(data_array[:counter])
+	def load(self, filelist, nrows, headers_only=False):
+		'''
+		imports a segy file to pytable.
+		note format header entry -must- be
+		set correctly for this to work
+		'''
+		
+		filters = tb.Filters(complib='blosc', complevel=1)
+		#create a h5 node
+		node = self.db.createGroup("/", 'line', 'PySeis Node')
+		fh = self.db.createTable(node, 'FH', segy_textual_header_dtype, "EBCDIC File Header")	
+		bh = self.db.createTable(node, 'BH', segy_binary_header_dtype, "Binary File Header")
+		th = self.db.createTable(node, 'TH', segy_trace_header_dtype, "Trace Header", expectedrows=int(nrows), filters=filters)
+		
+		
+		for filename in filelist:
+			file = filename.strip()
+			#group name, ie line name, from file name
+			#~ group = file.split('/')[-1].split('.')[0]
+			#~ group = group.translate(None, delchars)
+			
+			
+
+			with open(file, 'rb') as f:
+				print file
+				#create EBCDC tab3e
+				
+				#import EBCDC
+				EBCDC = f.read(3200).decode('EBCDIC-CP-BE').encode('ascii')
+				fh.append(np.fromstring(EBCDC, dtype=segy_textual_header_dtype))
+				
+				#import binary header
+				
+				binary = np.fromstring(f.read(400), dtype=segy_binary_header_dtype)
+				#endian sanity checks. this is pretty crude and will need revisting.
+
+				try:
+					assert 0 < binary['format'] < 9
+				except AssertionError:
+					binary = binary.byteswap()
+
+				assert 0 < binary['format'] < 9				
+				bh.append(binary)
+				
+				#insert file size sanity checks and create file map table
+				#file map table calculates the byte location of each item in the file
+				#to be used for overwrites/header_only cases
+				
+				ns = binary['hns']
+				f.seek(0, os.SEEK_END)
+				size = f.tell()
+				nt = (size-3600.0)/(240.0+ns*4.0)
+				assert nt % 1 == 0
+				
+				th_seeks = range(3600, size, 240.0+ns*4.0)
+				td_seeks = range(3600+240, size, 240.0+ns*4.0)
+				
+				assert size == td_seeks[-1]+ns*4.0
+					
+				#create tables for trace headers and traces
+				
+				#~ td = self.db.create_earray(node,
+							#~ name = 'TD',
+							#~ atom = tb.Float32Atom(), 
+							#~ shape = (0,ns),
+							#~ title = "Trace Header", 
+							#~ filters = tb.Filters(complevel=6, complib='zlib'),
+							#~ expectedrows=nt)
+							
+				#read in trace headers
+				counts = 1e6
+				header_array = np.zeros(counts, dtype=segy_trace_header_dtype)
+				counter = 0
+				for locale in th_seeks:
+					f.seek(locale)
+					header_array[counter] = np.fromfile(f, count=1, dtype=segy_trace_header_dtype).byteswap()
+					counter += 1
+					if counter == counts:
+						th.append(header_array)
+						counter = 0
+						header_array = np.zeros(counts, dtype=segy_trace_header_dtype)
+				th.append(header_array[:counter])	
 		
 		
 	def exportFIle(self, filename):
