@@ -104,21 +104,25 @@ def dups6(th):
 	'''
 	bloom filter
 	'''
+	with Timer() as t:
+		x = th.cols.id
+		y = th.cols.counts
+		expr = '(x * 65536) + y'
+		ex = tb.Expr(expr)
+		ex.setOutput(th.cols.hash)
+		ex.eval()
+		th.cols.hash.remove_index()
+		th.cols.hash.create_csindex(filters=filters)
+		z = th.itersorted(sortby=th.cols.hash)
+		ref = None
+		for row in z:
+			if row['hash'] == ref:
+				hash = row['hash'] 
+				count = hash% 65536
+				id = int((hash - count) / 65536)
+				#~ print(id, count)
+			ref = row['hash']
 
-	ex = tb.Expr('(x * 65536) + y', uservars = {"x": th.cols.id, "y":  th.cols.counts})
-	ex.setOutput(th.cols.hash)
-	ex.eval()
-	th.cols.hash.remove_index()
-	th.cols.hash.create_csindex(filters=filters)
-	ref = None
-	dups = []
-	for row in th.itersorted(sortby=th.cols.hash):
-		if row['hash'] == ref:
-			dups.append(row['hash'] )
-		ref = row['hash']
-
-	print("ids: ", np.right_shift(np.array(dups, dtype=np.int64), 16))
-	print("counts: ", np.array(dups, dtype=np.int64) & 65536-1)
 		
 	#~ print('''
 	#~ hash calculation
@@ -133,40 +137,19 @@ def dups7(th):
 	'''
 	
 	with Timer() as t:
-		id = None
-		z = th.itersorted(sortby=th.cols.id)
+		z = th.itersorted(th.cols.id)
 		for row in z:
-			id_tmp = row['id']
-			if id_tmp == id:
-				print(id)
-			id = id_tmp
-
-			
-			#~ if row['id'] == id:
-				#~ bucket.append(row['counts'])
-			#~ else:
-				#~ if len(bucket) >1:
-					#~ bucket = np.sort(bucket)
-					#~ dups = bucket[bucket[:-1] == bucket[1:]]
-					#~ if dups:
-						#~ pass
-						#~ print(id, dups)
-				#~ id = row['id']
-				#~ bucket = []
-			
-			
-		#~ for row in z:
-			#~ result = th.readWhere('(id == cid) & (counts == ccounts)', {'cid': row['id'], 'ccounts': row['counts']}, start=row.nrow, stop=row.nrow+1)
-			#~ if len(result) > 1:
-				#~ print(row['id'])
-	#~ print('''
-	#~ sort method
-	#~ adjacent search
-	#~ with condvals
-	#~ nrows=%d
-	#~ time = %.3fs
+			result = th.readWhere('(id == cid) & (counts == ccounts)', {'cid': row['id'], 'ccounts': row['counts']}, start=row.nrow, stop=row.nrow+1)
+			if len(result) > 1:
+				print(row['id'])
+	print('''
+	sort method
+	adjacent search
+	with condvals
+	nrows=%d
+	time = %.3fs
 	
-	#~ ''')%(th.nrows, t.interval)
+	''')%(th.nrows, t.interval)
 	
 
 def dups8(th):
@@ -239,8 +222,8 @@ if __name__ == '__main__':
 		#~ dups8(th)
 		#~ dups9(th)
 		import timeit
-		#~ print(np.amin(timeit.repeat("dups6(th)", setup="from __main__ import dups6, th", number=1, repeat=1)))
-		print(np.amin(timeit.repeat("dups7(th)", setup="from __main__ import dups7, th", number=1, repeat=1)))
+		print(np.amin(timeit.repeat("dups6(th)", setup="from __main__ import dups6, th", number=1, repeat=1)))
+		print(np.amin(timeit.repeat("dups1(th)", setup="from __main__ import dups1, th", number=1, repeat=1)))
 		db.close()
 
 
