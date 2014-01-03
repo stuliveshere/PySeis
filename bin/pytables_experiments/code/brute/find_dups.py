@@ -15,7 +15,7 @@ class Timer:
         self.interval = self.end - self.start
 
 def dups1(th):
-	#~ with Timer() as t:
+	with Timer() as t:
 		for row in th:
 			id = row['id']
 			counts = row['counts']
@@ -35,6 +35,7 @@ def dups1(th):
 		
 def dups2(th):
 	with Timer() as t:
+		
 		for row in th:
 			id = row['id']
 			counts = row['counts']
@@ -68,19 +69,16 @@ def dups3(th):
 	''')%(th.nrows, t.interval)
 			
 def dups4(th):
-	with Timer() as t:
-		for row in th:
-			result = th.readWhere('(id == cid) & (counts == ccounts)', {'cid': row['id'], 'ccounts': row['counts']}, start=row.nrow, stop=th.nrows)
-			if len(result) > 1:
-				print(row['id'])
-	print('''
-	brute force method
-	triangular search
-	with condvals
-	nrows=%d
-	time = %.3fs
-	
-	''')%(th.nrows, t.interval)
+	th.cols.id.remove_index()
+	th.cols.counts.remove_index()
+	indexrows = th.cols.id.create_csindex(filters=filters)
+	indexrows = th.cols.counts.create_csindex(filters=filters)
+	for row in th:
+		result = th.readWhere('(id == cid) & (counts == ccounts)', {'cid': row['id'], 'ccounts': row['counts']}, start=row.nrow, stop=th.nrows)
+		if len(result) > 1:
+			pass
+			#~ print(row['id'])
+
 
 			
 def dups5(th):
@@ -116,57 +114,31 @@ def dups6(th):
 		if row['hash'] == ref:
 			dups.append(row['hash'] )
 		ref = row['hash']
+	if dups:
+		pass
+		#~ print("ids: ", np.right_shift(np.array(dups, dtype=np.int64), 16))
+		#~ print("counts: ", np.array(dups, dtype=np.int64) & 65536-1)
 
-	print("ids: ", np.right_shift(np.array(dups, dtype=np.int64), 16))
-	print("counts: ", np.array(dups, dtype=np.int64) & 65536-1)
-		
-	#~ print('''
-	#~ hash calculation
-	#~ nrows=%d
-	#~ time = %.3fs	
-	
-	#~ ''' %(th.nrows, t.interval))
 	
 def dups7(th):
-	'''
-	sorted
-	'''
-	
-	with Timer() as t:
-		id = None
-		z = th.itersorted(sortby=th.cols.id)
-		for row in z:
-			id_tmp = row['id']
-			if id_tmp == id:
-				print(id)
-			id = id_tmp
 
-			
-			#~ if row['id'] == id:
-				#~ bucket.append(row['counts'])
-			#~ else:
-				#~ if len(bucket) >1:
-					#~ bucket = np.sort(bucket)
-					#~ dups = bucket[bucket[:-1] == bucket[1:]]
-					#~ if dups:
-						#~ pass
-						#~ print(id, dups)
-				#~ id = row['id']
-				#~ bucket = []
-			
-			
-		#~ for row in z:
-			#~ result = th.readWhere('(id == cid) & (counts == ccounts)', {'cid': row['id'], 'ccounts': row['counts']}, start=row.nrow, stop=row.nrow+1)
-			#~ if len(result) > 1:
-				#~ print(row['id'])
-	#~ print('''
-	#~ sort method
-	#~ adjacent search
-	#~ with condvals
-	#~ nrows=%d
-	#~ time = %.3fs
-	
-	#~ ''')%(th.nrows, t.interval)
+	ex = tb.Expr('(x * 65536) + y', uservars = {"x": th.cols.id, "y":  th.cols.counts})
+	ex.setOutput(th.cols.hash)
+	ex.eval()
+	th.cols.hash1[1:] = th.cols.hash[:-1]
+	th.cols.hash1[0] = th.cols.hash[-1]
+	ex = tb.Expr('(x - y)', uservars = {"x": th.cols.hash, "y":  th.cols.hash1})
+	result = th.where('hash == hash1', {'cid': row['id'], 'ccounts': row['counts']})
+	#~ ref = None
+	#~ dups = []
+	#~ for row in th.itersorted(sortby=th.cols.hash):
+		#~ if row['hash'] == ref:
+			#~ dups.append(row['hash'] )
+		#~ ref = row['hash']
+	#~ if dups:
+		#~ print("ids: ", np.right_shift(np.array(dups, dtype=np.int64), 16))
+		#~ print("counts: ", np.array(dups, dtype=np.int64) & 65536-1)
+
 	
 
 def dups8(th):
@@ -221,13 +193,23 @@ if __name__ == '__main__':
 		print("1e%d rows" %n)
 		db = tb.openFile('db.h5', mode = "w", title='test')
 		node = db.createGroup("/", 'line', 'Node')
-		mytype = np.dtype([('id', np.int64),('counts', np.int64), ('hash', np.int64)])
+		mytype = np.dtype([('id', np.int64),('counts', np.int64), ('hash', np.int64), ('hash1', np.int64)])
 		filters = tb.Filters(complib='blosc', complevel=1)
 		th = db.createTable(node, 'TH', mytype, "Headers", expectedrows=nrows, filters=filters)
-		data = np.random.randint(1, 2**16, (nrows, 3)).astype(np.int64)
+		remainder =  nrows% 1e6
+		chunks = int((nrows - remainder)/1e6)
+		for i in range(chunks):
+			data = np.random.randint(1, 2**16, (1e6, 4)).astype(np.int64)
+			th.append(data)				
+		data = np.random.randint(1, 2**16, (remainder, 4)).astype(np.int64)
 		th.append(data)
-		indexrows = th.cols.id.create_csindex(filters=filters)
-		indexrows = th.cols.counts.create_csindex(filters=filters)	
+		ex = tb.Expr('0')
+		ex.setOutput(th.cols.hash)
+		ex.eval()
+		ex.setOutput(th.cols.hash1)
+		ex.eval()	
+
+		#~	
 		
 		#~ dups1(th)
 		#~ dups2(th)
@@ -239,8 +221,10 @@ if __name__ == '__main__':
 		#~ dups8(th)
 		#~ dups9(th)
 		import timeit
-		#~ print(np.amin(timeit.repeat("dups6(th)", setup="from __main__ import dups6, th", number=1, repeat=1)))
-		print(np.amin(timeit.repeat("dups7(th)", setup="from __main__ import dups7, th", number=1, repeat=1)))
+		print(np.amin(timeit.repeat("dups4(th)", setup="from __main__ import dups4, th", number=1, repeat=1)))
+		print(np.amin(timeit.repeat("dups6(th)", setup="from __main__ import dups6, th", number=1, repeat=1)))
+		#~ print(np.amin(timeit.repeat("dups7(th)", setup="from __main__ import dups7, th", number=1, repeat=1)))
+
 		db.close()
 
 
