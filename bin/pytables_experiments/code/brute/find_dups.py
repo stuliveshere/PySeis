@@ -141,27 +141,26 @@ def dups7(th):
 
 	
 
-def dups8(th):
+def dups8(db):
 	'''
 	sorted
 	'''
-	z = th.itersorted(th.cols.id)
-	with Timer() as t:
-		id = None
-		counts = None
-		for row in z:
-			if (row['id'] == id) & (row['counts'] == counts) :
-				print(row['id'], row['counts'])
-			id = row['id']
-			counts = row['counts']
-				
-	print('''
-	sort method
-	simple adjacent search
-	nrows=%d
-	time = %.3fs
-	
-	''')%(th.nrows, t.interval)		
+	th = db.root.line.TH
+	ex = tb.Expr('(x * 65536) + y', uservars = {"x": th.cols.id, "y":  th.cols.counts})
+	ex.setOutput(th.cols.hash)
+	ex.eval()
+	th.cols.hash.remove_index()
+	th.cols.hash.create_csindex(filters=filters)
+	db.copy_file('test2.h5', sortby=th.cols.hash, overwrite=True, cols=['hash', 'hash1', 'result'])
+	db = tb.openFile('test2.h5', mode = "r+")
+	th = db.root.line.TH
+	th.cols.hash1[1:] = th.cols.hash[:-1]
+	th.cols.hash1[0] = th.cols.hash[-1]
+	ex = tb.Expr('(x - y)', uservars = {"x": th.cols.hash, "y":  th.cols.hash1})
+	ex.setOutput(th.cols.result)
+	ex.eval()	
+	#~ print(th.readWhere('result == 0'))
+	db.close()	
 	
 def dups9(th):
 	''' 
@@ -193,15 +192,15 @@ if __name__ == '__main__':
 		print("1e%d rows" %n)
 		db = tb.openFile('db.h5', mode = "w", title='test')
 		node = db.createGroup("/", 'line', 'Node')
-		mytype = np.dtype([('id', np.int64),('counts', np.int64), ('hash', np.int64), ('hash1', np.int64)])
+		mytype = np.dtype([('id', np.int64),('counts', np.int64), ('hash', np.int64), ('hash1', np.int64), ('result', np.int)])
 		filters = tb.Filters(complib='blosc', complevel=1)
 		th = db.createTable(node, 'TH', mytype, "Headers", expectedrows=nrows, filters=filters)
 		remainder =  nrows% 1e6
 		chunks = int((nrows - remainder)/1e6)
 		for i in range(chunks):
-			data = np.random.randint(1, 2**16, (1e6, 4)).astype(np.int64)
+			data = np.random.randint(1, 2**16, (1e6, 5)).astype(np.int64)
 			th.append(data)				
-		data = np.random.randint(1, 2**16, (remainder, 4)).astype(np.int64)
+		data = np.random.randint(1, 2**16, (remainder, 5)).astype(np.int64)
 		th.append(data)
 		ex = tb.Expr('0')
 		ex.setOutput(th.cols.hash)
@@ -218,12 +217,12 @@ if __name__ == '__main__':
 		#~ dups5(th)
 		#~ dups6(th)
 		#~ dups7(th)
-		#~ dups8(th)
+		#~ dups8(db)
 		#~ dups9(th)
 		import timeit
-		print(np.amin(timeit.repeat("dups4(th)", setup="from __main__ import dups4, th", number=1, repeat=1)))
+		#~ print(np.amin(timeit.repeat("dups4(th)", setup="from __main__ import dups4, th", number=1, repeat=1)))
 		print(np.amin(timeit.repeat("dups6(th)", setup="from __main__ import dups6, th", number=1, repeat=1)))
-		#~ print(np.amin(timeit.repeat("dups7(th)", setup="from __main__ import dups7, th", number=1, repeat=1)))
+		print(np.amin(timeit.repeat("dups8(db)", setup="from __main__ import dups8, db", number=1, repeat=1)))
 
 		db.close()
 
