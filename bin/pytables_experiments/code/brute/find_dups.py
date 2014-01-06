@@ -151,16 +151,24 @@ def dups8(db):
 	ex.eval()
 	th.cols.hash.remove_index()
 	th.cols.hash.create_csindex(filters=filters)
-	db.copy_file('test2.h5', sortby=th.cols.hash, overwrite=True, cols=['hash', 'hash1', 'result'])
-	db = tb.openFile('test2.h5', mode = "r+")
-	th = db.root.line.TH
-	th.cols.hash1[1:] = th.cols.hash[:-1]
-	th.cols.hash1[0] = th.cols.hash[-1]
-	ex = tb.Expr('(x - y)', uservars = {"x": th.cols.hash, "y":  th.cols.hash1})
-	ex.setOutput(th.cols.result)
-	ex.eval()	
+	z = th.itersorted(sortby=th.cols.hash)
+	holder = None
+	dups = []
+	for row in z:
+		t = row['hash']
+		if  t == holder:
+			dups.append(row['id'])
+		holder = t
+
+		
+		#~ z.next()
+	#~ th.cols.hash1[1:] = th.cols.hash[:-1]
+	#~ th.cols.hash1[0] = th.cols.hash[-1]
+	#~ ex = tb.Expr('(x - y)', uservars = {"x": th.cols.hash, "y":  th.cols.hash1})
+	#~ ex.setOutput(th.cols.result)
+	#~ ex.eval()	
 	#~ print(th.readWhere('result == 0'))
-	db.close()	
+	#~ db.close()	
 	
 def dups9(th):
 	''' 
