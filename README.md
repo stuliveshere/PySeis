@@ -25,17 +25,19 @@ Open and shared
 
 currently focused on filetype IO and trialing pytables/HDF5. 
 
-
 =========
 
-[EPD](https://www.enthought.com/products/epd/free/) compatible as much as possible.  The reliance on EPD is due to a heavy dependence upon numpy.
 
-![EPD](https://www.enthought.com/static/img/enthought-logo.png)
-
-define data format using [pytables](http://www.pytables.org/) 
+data format using [pytables](http://www.pytables.org/) 
 
 ![PyTables](http://www.pytables.org/moin/PyTables?action=AttachFile&do=get&target=pytables-powered.png)
 
 segd/segy/su object management
 
 matplotlib/mayavi visualisation
+
+I've backed away from using EPD somewhat.  I dont want to have to install a huge IDE just to get numpy.
+
+EPD free == convenient. EPD canopy == bloat.
+
+pip + virtualenvs == better.
