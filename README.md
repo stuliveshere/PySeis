@@ -23,6 +23,11 @@ Open and shared
 
 =========
 
+currently focused on filetype IO and trialing pytables/HDF5. 
+
+
+=========
+
 [EPD](https://www.enthought.com/products/epd/free/) compatible as much as possible.  The reliance on EPD is due to a heavy dependence upon numpy.
 
 ![EPD](https://www.enthought.com/static/img/enthought-logo.png)
