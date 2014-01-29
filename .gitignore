@@ -4,3 +4,6 @@
 *.h5
 *.segd
 *.tmp
+.project
+.pydevproject
+__pycache__

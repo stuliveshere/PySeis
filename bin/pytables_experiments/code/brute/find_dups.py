@@ -146,19 +146,27 @@ def dups8(db):
 	sorted
 	'''
 	th = db.root.line.TH
+	#~ node1 = db.createGroup("/", 'line1', 'Node1')
+	
+	#~ mytype = np.dtype([('hash', np.int64)])
+	#~ filters = tb.Filters(complib='blosc', complevel=1)
+	#~ db = tb.openFile('db2.h5', mode = "w", title='test')
+	#~ node = db.createGroup("/", 'line', 'Node')
+	#~ dh = db.createTable(node, 'DH', mytype, "Headers", expectedrows=th.nrows, filters=filters)
+	
+	#~ 
+	
 	ex = tb.Expr('(x * 65536) + y', uservars = {"x": th.cols.id, "y":  th.cols.counts})
 	ex.setOutput(th.cols.hash)
 	ex.eval()
+	
 	th.cols.hash.remove_index()
 	th.cols.hash.create_csindex(filters=filters)
-	z = th.itersorted(sortby=th.cols.hash)
-	holder = None
-	dups = []
-	for row in z:
-		t = row['hash']
-		if  t == holder:
-			dups.append(row['id'])
-		holder = t
+	#~ tt = th.copy(newparent=node1, sortby=th.cols.hash)
+	db.copy_file('test.h5', sortby=th.cols.hash, overwrite=True)
+	
+	print(th)
+	#~ print(tt)
 
 		
 		#~ z.next()
@@ -168,7 +176,7 @@ def dups8(db):
 	#~ ex.setOutput(th.cols.result)
 	#~ ex.eval()	
 	#~ print(th.readWhere('result == 0'))
-	#~ db.close()	
+	db.close()	
 	
 def dups9(th):
 	''' 
@@ -200,24 +208,21 @@ if __name__ == '__main__':
 		print("1e%d rows" %n)
 		db = tb.openFile('db.h5', mode = "w", title='test')
 		node = db.createGroup("/", 'line', 'Node')
-		mytype = np.dtype([('id', np.int64),('counts', np.int64), ('hash', np.int64), ('hash1', np.int64), ('result', np.int)])
+		mytype = np.dtype([('id', np.int64),('counts', np.int64), ('hash', np.int64)])
 		filters = tb.Filters(complib='blosc', complevel=1)
 		th = db.createTable(node, 'TH', mytype, "Headers", expectedrows=nrows, filters=filters)
 		remainder =  nrows% 1e6
 		chunks = int((nrows - remainder)/1e6)
 		for i in range(chunks):
-			data = np.random.randint(1, 2**16, (1e6, 5)).astype(np.int64)
+			data = np.random.randint(1, 2**16, (1e6, 3)).astype(np.int64)
 			th.append(data)				
-		data = np.random.randint(1, 2**16, (remainder, 5)).astype(np.int64)
+		data = np.random.randint(1, 2**16, (remainder, 3)).astype(np.int64)
 		th.append(data)
 		ex = tb.Expr('0')
 		ex.setOutput(th.cols.hash)
 		ex.eval()
-		ex.setOutput(th.cols.hash1)
-		ex.eval()	
 
-		#~	
-		
+
 		#~ dups1(th)
 		#~ dups2(th)
 		#~ dups3(th)
