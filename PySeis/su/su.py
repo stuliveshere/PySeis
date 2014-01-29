@@ -196,9 +196,22 @@ def writeSU(data, filename=None):
 	else:
 		data.tofile(filename)
 		
+class Su(object):
+	'''
+	general class for reading, writing and creating SU files
+	'''
+	def __init__(self):
+		pass
+		
+	def __call__(self):
+		pass
+
+	
+		
 if __name__ == "__main__":
-	data = readSU()
-	writeSU(data)
+	a = Su()
+	#~ data = readSU()
+	#~ writeSU(data)
 	
 
 	
