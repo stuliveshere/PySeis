@@ -1,0 +1,292 @@
+#!/usr/bin/python -d
+
+#Copyright (c) 2013 Stewart Fletcher
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy of
+#this software and associated documentation files (the "Software"), to deal in
+#the Software without restriction, including without limitation the rights to
+#use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+#the Software, and to permit persons to whom the Software is furnished to do so,
+#subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+#FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+#COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+#IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+#CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+__description__ = '''
+python SU stdin/stdout interface module
+
+	data = readSU()
+	writeSU(data)
+	
+uses custom dtypes for a very fast read/write to stdin/stdout
+returns a single np.ndarray with dtype=sufile
+a numpy 2d array of traces can be addressed as data['traces']
+each header term can also be addressed via data['insertheaderterm']
+'''
+
+import numpy as np, sys, os, os.path
+import pylab
+su_header_dtype = np.dtype([
+('tracl', np.int32),
+('tracr', np.int32),
+('fldr', np.int32),
+('tracf', np.int32),
+('ep', np.int32),
+('cdp', np.int32),
+('cdpt', np.int32),
+('trid', np.int16),
+('nvs', np.int16),
+('nhs', np.int16),
+('duse', np.int16),
+('offset', np.int32),
+('gelev', np.int32),
+('selev', np.int32),
+('sdepth', np.int32),
+('gdel', np.int32),
+('sdel', np.int32),
+('swdep', np.int32),
+('gwdep', np.int32),
+('scalel', np.int16),
+('scalco', np.int16),
+('sx', np.int32),
+('sy', np.int32),
+('gx', np.int32),
+('gy', np.int32),
+('counit', np.int16),
+('wevel', np.int16),
+('swevel', np.int16),
+('sut', np.int16),
+('gut', np.int16),
+('sstat', np.int16),
+('gstat', np.int16),
+('tstat', np.int16),
+('laga', np.int16),
+('lagb', np.int16),
+('delrt', np.int16),
+('muts', np.int16),
+('mute', np.int16),
+('ns', np.uint16),
+('dt', np.uint16),
+('gain', np.int16),
+('igc', np.int16),
+('igi', np.int16),
+('corr', np.int16),
+('sfs', np.int16),
+('sfe', np.int16),
+('slen', np.int16),
+('styp', np.int16),
+('stas', np.int16),
+('stae', np.int16),
+('tatyp', np.int16),
+('afilf', np.int16),
+('afils', np.int16),
+('nofilf', np.int16),
+('nofils', np.int16),
+('lcf', np.int16),
+('hcf', np.int16),
+('lcs', np.int16),
+('hcs', np.int16),
+('year', np.int16),
+('day', np.int16),
+('hour', np.int16),
+('minute', np.int16),
+('sec', np.int16),
+('timebas', np.int16),
+('trwf', np.int16),
+('grnors', np.int16),
+('grnofr', np.int16),
+('grnlof', np.int16),
+('gaps', np.int16),
+('otrav', np.int16), #179,180
+('d1', np.float32), #181,184
+('f1', np.float32), #185,188
+('d2', np.float32), #189,192
+('f2', np.float32), #193, 196
+('ShotPoint', np.int32), #197,200
+('unscale', np.int16), #201, 204
+('TraceValueMeasurementUnit', np.int16),
+('TransductionConstantMantissa', np.int32),
+('TransductionConstantPower', np.int16),
+('TransductionUnit', np.int16),
+('TraceIdentifier', np.int16),
+('ScalarTraceHeader', np.int16),
+('SourceType', np.int16),
+('SourceEnergyDirectionMantissa', np.int32),
+('SourceEnergyDirectionExponent', np.int16),
+('SourceMeasurementMantissa', np.int32),
+('SourceMeasurementExponent', np.int16),
+('SourceMeasurementUnit', np.int16),
+('UnassignedInt1', np.int32),
+('ns1', np.int32),
+])
+
+def xwigb(panel, key='offset'):
+        '''
+        looks like suxwigb
+        '''
+        axis = np.arange(panel['ns'][0])*panel['dt'][0]*1e-6
+        traces = panel['trace']
+        traces  /= np.sqrt((traces ** 2).sum(1))[:,np.newaxis]
+        x, y = np.meshgrid(range(traces.shape[0]), range(traces.shape[1]))
+        traces += x.T
+        fig = pylab.figure()
+        for trace in traces:
+                pylab.plot(trace, axis,'k')
+        pylab.gca().invert_yaxis()
+        pylab.ylabel('Time(s)')
+        pylab.title('Trace')
+        pylab.gca().xaxis.tick_top()
+        pylab.show()
+
+def ximage(panel, agc=0):
+        '''
+        looks like suximage. 
+        fix this to use the SU 
+        headers for plotting
+        '''
+        data = panel['trace']
+        
+        if agc:
+                vmax = np.amax(data)*0.01
+                vmin = np.amin(data)*0.01
+        else:
+                vmax = np.amax(data)
+                vmin= np.amin(data)
+
+        fig = pylab.figure()
+        pylab.imshow(data.T, aspect='auto', vmax=vmax, vmin=vmin, cmap='gist_yarg') #, 
+        #extent=(min(panel['offset']), max(panel['offset']), panel['ns'][0]*(panel['dt'][0]*1e-6), 0)) 
+        pylab.xlabel('Offset')
+        pylab.ylabel('Time(s)')
+        pylab.show()
+
+def typeSU(ns):
+	return np.dtype(su_header_dtype.descr + [('trace', ('<f4',ns))])
+	
+		
+def readSUheader(filename):
+	raw = open(filename, 'rb').read()
+	return np.fromstring(raw, dtype=su_header_dtype, count=1)
+
+def readSU(filename=None):
+	if filename == None:
+		raw= sys.stdin.read()
+	else:
+		raw = open(filename, 'rb').read()
+	return readData(raw)
+	
+def readData(raw):
+	su_header = np.fromstring(raw, dtype=su_header_dtype, count=1)
+	ns = su_header['ns'][0]
+	file_dtype = typeSU(ns)
+	data = np.fromstring(raw, dtype=file_dtype)
+	return data	
+	
+def writeSU(data, filename=None):
+	if filename == None:
+		data.tofile(sys.stdout)
+	else:
+		data.tofile(filename)
+		
+class Su(object):
+	'''
+	general class for reading, writing and creating SU files
+	'''
+	def __init__(self):
+		pass
+		
+	def __call__(self):
+		pass
+
+class su:
+    def __init__(self, database, **kwargs):
+        #~ if not set(kwargs.keys()).issubset(keylist):
+            #~ raise Exception("Invalid key in segy kwargs")
+        #~ if not filename: 
+            #~ self.initialiseFramework()
+        #~ else:
+            #~ self.loadFramework()
+        self.db = tb.openFile(database, mode = "w", title='test')
+        
+    def read(self, filelist):
+        def read_bheader(file_):
+            ''''function to read binary header'''
+            with open(file_, 'rb') as f:
+                f.seek(3200)
+                binary = np.fromstring(f.read(400), dtype=segy_binary_header_dtype)
+                #endian sanity checks. this is pretty crude and will need revisting.
+                try:
+                    assert 0 < binary['format'] < 9
+                except AssertionError:
+                    binary = binary.byteswap()
+                return binary
+
+        def num_traces(file_, ns):
+                with open(file_, 'rb') as f:
+                    f.seek(0, os.SEEK_END)
+                    size = f.tell()
+                    nt = (size-3600.0)/(240.0+ns*4.0)
+                    assert nt % 1 == 0
+                return nt
+
+        def ibm2ieee(ibm):
+            s = ibm >> 31 & 0x01 
+            exp = ibm >> 24 & 0x7f 
+            fraction = (ibm & 0x00ffffff).astype(np.float32) / 16777216.0
+            ieee = (1.0 - 2.0 * s) * fraction * np.power(np.float32(16.0), exp - 64.0) 
+            return ieee
+        
+        
+        node = self.db.createGroup("/", 'jobname', 'PySeis Node')
+        fh = self.db.createTable(node, 'FH', segy_textual_header_dtype, "EBCDIC File Header")
+        bh = self.db.createTable(node, 'BH', segy_binary_header_dtype, "Binary File Header")
+        for file_ in filelist:
+            #print file_
+            fh.append(read_EBCDIC(file_))
+            bheader = read_bheader(file_)
+            bheader['ntrpr'] = num_traces(file_, bheader['hns']) - bheader['nart']
+            bh.append(bheader)
+
+            
+        assert np.any(np.diff(bh.cols.hns[:])) == False #check ns is constant
+        assert np.any(np.diff(bh.cols.hdt[:])) == False #check ns is constant
+        ns = bh.cols.hns[0]
+        dt = bh.cols.hdt[0]
+        
+        ibmtype = np.dtype(segy_trace_header_dtype.descr + [('data', ('>i4',ns))])
+        ieeetype = np.dtype(segy_trace_header_dtype.descr + [('data', ('f4',ns))])
+        for index, file_ in enumerate(filelist):
+            th = self.db.createTable(node, "gather"+str(index), ieeetype, "Gather")
+            #will need to add chunking at some point.
+            with open(file_, 'rb') as f:
+                f.seek(3600+240)
+                data = np.fromfile(f, dtype=ibmtype)
+                data['data'] = ibm2ieee(data['data'])
+                th.append(data.astype(ieeetype))
+
+
+if __name__ == '__main__':
+    os.chdir('../../data/')
+    path = '/misc/coalStor/University_QLD/crystal_mountain/2014/data/segy/'
+    filelist = [path+a for a in os.listdir(path) if '.segy' in a]
+    a = segy('test.h5')
+    a.read(filelist)
+		
+if __name__ == "__main__":
+	a = Su()
+	#~ data = readSU()
+	#~ writeSU(data)
+	
+
+	
+
+
+

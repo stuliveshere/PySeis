@@ -6,7 +6,7 @@ each gather shall be a table containing both the trace header and the data
 
 import numpy as np
 import tables as tb
-import os
+import os, sys
 
 segy_textual_header_dtype = np.dtype([('TFH', (np.str_,   80))])
 
@@ -154,7 +154,12 @@ class segy:
         def read_EBCDIC(file_):
             ''''function to read EBCDIC header'''
             with open(file_, 'rb') as f:
-                return f.read(3200).decode('EBCDIC-CP-BE').encode('ascii')
+                header = np.fromfile(f, dtype='u2', count=3200/2)
+                if np.any(np.diff(header)):
+                    f.seek(0)
+                    return f.read(3200).decode('EBCDIC-CP-BE').encode('ascii')
+                else:
+                    return None
 
         def read_bheader(file_):
             ''''function to read binary header'''
@@ -189,11 +194,12 @@ class segy:
         bh = self.db.createTable(node, 'BH', segy_binary_header_dtype, "Binary File Header")
         for file_ in filelist:
             #print file_
-            fh.append(read_EBCDIC(file_))
+            EBCDIC = read_EBCDIC(file_)
+            if EBCDIC: fh.append(EBCDIC)
             bheader = read_bheader(file_)
-            bheader['ntrpr'] = num_traces(file_, bheader['hns']) - bheader['nart']
+            #bheader['ntrpr'] = num_traces(file_, bheader['hns']) - bheader['nart']
             bh.append(bheader)
-
+            self.db.flush()
             
         assert np.any(np.diff(bh.cols.hns[:])) == False #check ns is constant
         assert np.any(np.diff(bh.cols.hdt[:])) == False #check ns is constant
@@ -214,8 +220,8 @@ class segy:
 
 if __name__ == '__main__':
     os.chdir('../../data/')
-    path = '/misc/coalStor/University_QLD/crystal_mountain/2014/data/segy/'
-    filelist = [path+a for a in os.listdir(path) if '.segy' in a]
+    path = '/misc/FieldData/Job_A023_Origin_Hi_res_trial_2013/PHASE1/VIBE_SEGY/'
+    filelist = [path+a for a in os.listdir(path) if '.sgy' in a]
     a = segy('segy_test.h5')
     a.read(filelist)
 
