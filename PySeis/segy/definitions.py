@@ -1,10 +1,12 @@
-import numpy as np
-import struct
-import tables as tb
-import math
-import os
+'''
+built around the concept of a gather object stored in a HDF5 table.
+each gather shall be a table containing both the trace header and the data
 
-delchars = ''.join(c for c in map(chr, range(256)) if not c.isalnum())
+'''
+
+import numpy as np
+import tables as tb
+import os
 
 segy_textual_header_dtype = np.dtype([('TFH', (np.str_,   80))])
 
@@ -138,14 +140,6 @@ segy_trace_header_dtype = np.dtype([
     ])
 
 
-
-
-keylist =     segy_textual_header_dtype.names + \
-        segy_binary_header_dtype.names + \
-        segy_trace_header_dtype.names 
-        
-
-
 class segy:
     def __init__(self, database, **kwargs):
         #~ if not set(kwargs.keys()).issubset(keylist):
@@ -154,321 +148,75 @@ class segy:
             #~ self.initialiseFramework()
         #~ else:
             #~ self.loadFramework()
+        self.db = tb.openFile(database, mode = "w", title='test')
         
-        self.db=database    
-        
-        
-        
-    def initialiseFramework(self):
-        
-        
-        pass
-        #initialise text header
-        
-        #initialise binary header
-    
-    def loadFramework(self):
-        pass
-        #pull a few key items in from segy file
-        
-    def load_separate(self, filelist, headers_only=False):
-        '''
-        imports a segy file to pytable.
-        note format header entry -must- be
-        set correctly for this to work
-        '''
-        
-            
-        for filename in filelist:
-            file_ = filename.strip()
-            #group name, ie line name, from file name
-            group = file_.split('/')[-1].split('.')[0]
-            group = group.translate(None, delchars)
-            #create a h5 node
-            node = self.db.createGroup("/", group, 'PySeis Node')
-
+    def read(self, filelist):
+        def read_EBCDIC(file_):
+            ''''function to read EBCDIC header'''
             with open(file_, 'rb') as f:
-                print file_
-                #create EBCDC tab3e
-                fh = self.db.createTable(node, 'FH', segy_textual_header_dtype, "EBCDIC File Header")
-                #import EBCDC
-                EBCDC = f.read(3200).decode('EBCDIC-CP-BE').encode('ascii')
-                fh.append(np.fromstring(EBCDC, dtype=segy_textual_header_dtype))
-                
-                #import binary header
-                bh = self.db.createTable(node, 'BH', segy_binary_header_dtype, "Binary File Header")
+                return f.read(3200).decode('EBCDIC-CP-BE').encode('ascii')
+
+        def read_bheader(file_):
+            ''''function to read binary header'''
+            with open(file_, 'rb') as f:
+                f.seek(3200)
                 binary = np.fromstring(f.read(400), dtype=segy_binary_header_dtype)
                 #endian sanity checks. this is pretty crude and will need revisting.
-
                 try:
                     assert 0 < binary['format'] < 9
                 except AssertionError:
                     binary = binary.byteswap()
+                return binary
 
-                assert 0 < binary['format'] < 9                
-                bh.append(binary)
-                
-                #insert file size sanity checks and create file map table
-                #file map table calculates the byte location of each item in the file
-                #to be used for overwrites/header_only cases
-                
-                ns = binary['hns']
-                f.seek(0, os.SEEK_END)
-                size = f.tell()
-                nt = (size-3600.0)/(240.0+ns*4.0)
-                assert nt % 1 == 0
-                
-                th_seeks = range(3600, size, 240.0+ns*4.0)
-                td_seeks = range(3600+240, size, 240.0+ns*4.0)
-                
-                assert size == td_seeks[-1]+ns*4.0
-                    
-                #create tables for trace headers and traces
-                th = self.db.createTable(node, 'TH', segy_trace_header_dtype, "Trace Header")
-                td = self.db.create_earray(node,
-                            name = 'TD',
-                            atom = tb.Float32Atom(), 
-                            shape = (0,ns),
-                            title = "Trace Header", 
-                            filters = tb.Filters(complevel=6, complib='zlib'),
-                            expectedrows=nt)
-                            
-                #read in trace headers
-                counts = 1e5
-                header_array = np.zeros(counts, dtype=segy_trace_header_dtype)
-                counter = 0
-                for locale in th_seeks:
-                    f.seek(locale)
-                    header_array[counter] = np.fromfile(f, count=1, dtype=segy_trace_header_dtype).byteswap()
-                    counter += 1
-                    if counter == counts:
-                        th.append(header_array)
-                        counter = 0
-                        header_array = np.zeros(counts, dtype=segy_trace_header_dtype)
-                th.append(header_array[:counter])        
-                
-                #~ if not headers_only: data_array = np.zeros(counts, dtype=('f4',binary['hns']))
-                #~ counter = 0
-                #~ for chunk in iter(lambda: f.read(240), ""):
-                    #~ header = np.fromstring(chunk, dtype=segy_trace_header_dtype).byteswap()
+        def num_traces(file_, ns):
+                with open(file_, 'rb') as f:
+                    f.seek(0, os.SEEK_END)
+                    size = f.tell()
+                    nt = (size-3600.0)/(240.0+ns*4.0)
+                    assert nt % 1 == 0
+                return nt
 
-                    #~ try:
-                        #~ assert header['ns'] == binary['hns'] 
-                    #~ except AssertionError:
-                        #~ header = header.newbyteorder('S')
-                    #~ try:
-                        #~ assert header['ns'] == binary['hns'] 
-                    #~ except AssertionError:
-                        #~ print header['ns'], binary['hns'] , binary['format']
-                        #~ header = header.newbyteorder('S')
-                        #~ print header['ns'], binary['hns'] , binary['format']
-                        #~ print f.tell()
-                        
-                    #~ assert header['ns'] == binary['hns']   
-
-
-                    #~ if not headers_only:
-                        #~ if binary['format'] == 1:
-                            #~ data = self.ibm2ieee(np.fromfile(f, dtype='>i4', count=header['ns'])).reshape(1,header['ns'])
-                        #~ elif binary['format'] == 5:
-                            #~ data = np.fromfile(f, dtype='>f4', count=header['ns']).reshape(1,header['ns'])
-                    #~ else:
-                        #~ f.seek(header['ns']*4, 1)
-                        
-                    #~ header_array[counter] = header    
-                    #~ if not headers_only: data_array[counter] = data
-                    #~ counter += 1
-                    #~ if counter == 1e5: 
-                        #~ th.append(header_array)
-                        #~ if not headers_only: td.append(data_array)
-                        #~ counter = 0                    
-                    
-                #~ th.append(header_array[:counter])
-                #~ if not headers_only: td.append(data_array[:counter])
-    def load(self, filelist, nrows, headers_only=False):
-        '''
-        imports a segy file to pytable.
-        note format header entry -must- be
-        set correctly for this to work
-        '''
+        def ibm2ieee(ibm):
+            s = ibm >> 31 & 0x01 
+            exp = ibm >> 24 & 0x7f 
+            fraction = (ibm & 0x00ffffff).astype(np.float32) / 16777216.0
+            ieee = (1.0 - 2.0 * s) * fraction * np.power(np.float32(16.0), exp - 64.0) 
+            return ieee
         
-        filters = tb.Filters(complib='blosc', complevel=1)
-        #create a h5 node
-        node = self.db.createGroup("/", 'line', 'PySeis Node')
-        fh = self.db.createTable(node, 'FH', segy_textual_header_dtype, "EBCDIC File Header")    
+        
+        node = self.db.createGroup("/", 'jobname', 'PySeis Node')
+        fh = self.db.createTable(node, 'FH', segy_textual_header_dtype, "EBCDIC File Header")
         bh = self.db.createTable(node, 'BH', segy_binary_header_dtype, "Binary File Header")
-        th = self.db.createTable(node, 'TH', segy_trace_header_dtype, "Trace Header", expectedrows=int(nrows), filters=filters)
-        
-        
-        for filename in filelist:
-            file_ = filename.strip()
-            #group name, ie line name, from file name
-            #~ group = file.split('/')[-1].split('.')[0]
-            #~ group = group.translate(None, delchars)
-            
-            
+        for file_ in filelist:
+            #print file_
+            fh.append(read_EBCDIC(file_))
+            bheader = read_bheader(file_)
+            bheader['ntrpr'] = num_traces(file_, bheader['hns']) - bheader['nart']
+            bh.append(bheader)
 
+            
+        assert np.any(np.diff(bh.cols.hns[:])) == False #check ns is constant
+        assert np.any(np.diff(bh.cols.hdt[:])) == False #check ns is constant
+        ns = bh.cols.hns[0]
+        dt = bh.cols.hdt[0]
+        
+        ibmtype = np.dtype(segy_trace_header_dtype.descr + [('data', ('>i4',ns))])
+        ieeetype = np.dtype(segy_trace_header_dtype.descr + [('data', ('f4',ns))])
+        for index, file_ in enumerate(filelist):
+            th = self.db.createTable(node, "gather"+str(index), ieeetype, "Gather")
+            #will need to add chunking at some point.
             with open(file_, 'rb') as f:
-                print file_
-                #create EBCDC tab3e
-                
-                #import EBCDC
-                EBCDC = f.read(3200).decode('EBCDIC-CP-BE').encode('ascii')
-                fh.append(np.fromstring(EBCDC, dtype=segy_textual_header_dtype))
-                
-                #import binary header
-                
-                binary = np.fromstring(f.read(400), dtype=segy_binary_header_dtype)
-                #endian sanity checks. this is pretty crude and will need revisting.
+                f.seek(3600+240)
+                data = np.fromfile(f, dtype=ibmtype)
+                data['data'] = ibm2ieee(data['data'])
+                th.append(data.astype(ieeetype))
 
-                try:
-                    assert 0 < binary['format'] < 9
-                except AssertionError:
-                    binary = binary.byteswap()
 
-                assert 0 < binary['format'] < 9                
-                bh.append(binary)
-                
-                #insert file size sanity checks and create file map table
-                #file map table calculates the byte location of each item in the file
-                #to be used for overwrites/header_only cases
-                
-                ns = binary['hns']
-                f.seek(0, os.SEEK_END)
-                size = f.tell()
-                nt = (size-3600.0)/(240.0+ns*4.0)
-                assert nt % 1 == 0
-                
-                th_seeks = range(3600, size, 240.0+ns*4.0)
-                td_seeks = range(3600+240, size, 240.0+ns*4.0)
-                
-                assert size == td_seeks[-1]+ns*4.0
-                    
-                #create tables for trace headers and traces
-                
-                #~ td = self.db.create_earray(node,
-                            #~ name = 'TD',
-                            #~ atom = tb.Float32Atom(), 
-                            #~ shape = (0,ns),
-                            #~ title = "Trace Header", 
-                            #~ filters = tb.Filters(complevel=6, complib='zlib'),
-                            #~ expectedrows=nt)
-                            
-                #read in trace headers
-                counts = 1e6
-                header_array = np.zeros(counts, dtype=segy_trace_header_dtype)
-                counter = 0
-                for locale in th_seeks:
-                    f.seek(locale)
-                    header_array[counter] = np.fromfile(f, count=1, dtype=segy_trace_header_dtype).byteswap()
-                    counter += 1
-                    if counter == counts:
-                        th.append(header_array)
-                        counter = 0
-                        header_array = np.zeros(counts, dtype=segy_trace_header_dtype)
-                th.append(header_array[:counter])    
-        
-        
-    def exportFIle(self, filename):
-        pass
-    
-    def ibm2ieee(self, ibm): 
-        s = ibm >> 31 & 0x01 
-        exp = ibm >> 24 & 0x7f 
-        fraction = (ibm & 0x00ffffff).astype(np.float32) / 16777216.0
-        ieee = (1.0 - 2.0 * s) * fraction * np.power(np.float32(16.0), exp - 64.0) 
-        return ieee 
-
-    def ieee2ibm(self, ieee): 
-        ieee = ieee.astype(np.float32)
-        expmask = 0x7f800000 
-        signmask = 0x80000000 
-        mantmask = 0x7fffff 
-        asint = ieee.view('i4') 
-        signbit = asint & signmask 
-        exponent = ((asint & expmask) >> 23) - 127 
-        # The IBM 7-bit exponent is to the base 16 and the mantissa is presumed to 
-        # be entirely to the right of the radix point. In contrast, the IEEE 
-        # exponent is to the base 2 and there is an assumed 1-bit to the left of the 
-        # radix point. 
-        exp16 = ((exponent+1) // 4) 
-        exp_remainder = (exponent+1) % 4 
-        exp16 += exp_remainder != 0 
-        downshift = np.where(exp_remainder, 4-exp_remainder, 0) 
-        ibm_exponent = np.clip(exp16 + 64, 0, 127) 
-        expbits = ibm_exponent << 24 
-        # Add the implicit initial 1-bit to the 23-bit IEEE mantissa to get the 
-        # 24-bit IBM mantissa. Downshift it by the remainder from the exponent's 
-        # division by 4. It is allowed to have up to 3 leading 0s. 
-        ibm_mantissa = ((asint & mantmask) | 0x800000) >> downshift 
-        # Special-case 0.0 
-        ibm_mantissa = np.where(ieee, ibm_mantissa, 0) 
-        expbits = np.where(ieee, expbits, 0) 
-        return signbit | expbits | ibm_mantissa
-        
-
- 
-# convert floating point to ibm
-    def ieee2ibm2(self, x, endian):
-    # check input data
-        if(x > 7.236998675585915e+75): return(0x7ffffff0)
-        if(x < -7.236998675585915e+75): return(0xfffffff0)
-        if(x == 0): return 0
-        if(x == np.NAN):  return (0x7fffffff) #check input if NAN number
-        
-        #conversion log2 from matlab
-        F, E = math.frexp(abs(x))
-
-        e = float (E/4.0);              # exponent of base 16
-        ec = math.ceil(e);            # adjust upwards to integer
-        p = ec + 64;                  # offset exponent
-
-        f = F * pow(2,(-4*(ec-e)));   #  correct mantissa for fractional part of exponent
-        # convert to integer. Roundoff here can be as large as
-        # 0.5/2^20 when mantissa is close to 1/16 so that
-        # 3 bits of signifance are lost.
-        f1 = round(f * 0x1000000);
-
-        # format hex
-        # put exponent in first byte of psi.
-        tmpi = p * 0x1000000;
-        if(tmpi<=0):
-            psi = 0
-        elif(tmpi>=0xFFFFFFFF):
-            psi = 0xFFFFFFFF
-        else:
-            psi = tmpi
-
-        # put mantissa into last 3 bytes of phi
-        if(f1<=0):
-            phi = 0
-        elif(f1>=0xFFFFFFFF):
-            phi = 0xFFFFFFFF
-        else:
-            phi = f1
-
-        # make bit representation
-        # exponent and mantissa
-        b = int(psi) | int(phi)
-        # sign bit
-        if(x<0):
-            b = b + 0x80000000
-
-        #print b
-        b = np.uint32(b)
-        if(endian):      #big endian
-            cval = struct.pack(">i",b)
-        else:            #litte endian
-            cval = struct.pack("<i",b)
-
-        return (cval)
-
-        
 if __name__ == '__main__':
     os.chdir('../../data/')
-    filelist = [a for a in os.listdir('.') if '.sgy' in a]
-    db = tb.openFile('test.h5', mode = "w", title='test')
-    
-    a = segy(db)
-    a.load(filelist, headers_only=True)
-    
+    path = '/misc/coalStor/University_QLD/crystal_mountain/2014/data/segy/'
+    filelist = [path+a for a in os.listdir(path) if '.segy' in a]
+    a = segy('segy_test.h5')
+    a.read(filelist)
+
+
