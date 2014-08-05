@@ -129,21 +129,6 @@ su_header_dtype = np.dtype([
 ])
 
 
-
-
-
-
-
-class Su(object):
-    '''
-    general class for reading, writing and creating SU files
-    '''
-    def __init__(self):
-        pass
-
-    def __call__(self):
-        pass
-
 class su:
     def __init__(self, database, **kwargs):
     #~ if not set(kwargs.keys()).issubset(keylist):
