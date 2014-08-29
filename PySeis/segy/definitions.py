@@ -211,11 +211,23 @@ class segy:
         for index, file_ in enumerate(filelist):
             th = self.db.createTable(node, "gather"+str(index), ieeetype, "Gather")
             #will need to add chunking at some point.
+            counts = 0
             with open(file_, 'rb') as f:
                 f.seek(3600+240)
-                data = np.fromfile(f, dtype=ibmtype)
-                data['data'] = ibm2ieee(data['data'])
-                th.append(data.astype(ieeetype))
+                try:
+                    while True:
+                        data = np.fromfile(f, dtype=ibmtype, count=int(1e5))
+                        data['data'] = ibm2ieee(data['data'])
+                        th.append(data.astype(ieeetype))
+                        th.flush()
+                except:
+                    data = np.fromfile(f, dtype=ibmtype)
+                    data['data'] = ibm2ieee(data['data'])
+                    th.append(data.astype(ieeetype))
+                    th.flush()
+                    
+
+            
 
 
 if __name__ == '__main__':
