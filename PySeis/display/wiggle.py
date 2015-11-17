@@ -17,7 +17,8 @@ def timer(function):
                )
         return result
     return function_timer
-    
+
+@timer
 def wiggle(frame, scale=1.0):
         fig = pylab.figure()
         ax = fig.add_subplot(111)        
@@ -49,7 +50,7 @@ def wiggle(frame, scale=1.0):
         ax.set_xlim([0,nt])
         ax.set_ylim([ns,0])
         pylab.tight_layout()
-        pylab.show()
+        #~ pylab.show()
         
         
 if __name__ == "__main__":
