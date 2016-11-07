@@ -13,5 +13,5 @@ except ImportError:
         print "something wrong with scipy"
         sys.exit()
         
-from toolbox import *
-from processing import *
+from . import core
+from .core import *
