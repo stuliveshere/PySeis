@@ -33,7 +33,7 @@ each header term can also be addressed via data['insertheaderterm']
 '''
 
 import numpy as np, sys, os, os.path
-import tables as tb
+
 su_header_dtype = np.dtype([
 ('tracl', np.int32),
 ('tracr', np.int32),
@@ -131,30 +131,27 @@ su_header_dtype = np.dtype([
 
 class su:
     def __init__(self, database, **kwargs):
+        pass
     #~ if not set(kwargs.keys()).issubset(keylist):
             #~ raise Exception("Invalid key in segy kwargs")
     #~ if not filename:
             #~ self.initialiseFramework()
     #~ else:
             #~ self.loadFramework()
-        self.db = tb.openFile(database, mode = "w", title='test')
+
 
     def read(self, filelist):
         
         def read_ns(filename):
             return np.fromfile(filename, dtype=su_header_dtype, count=1)['ns']
 
-        node = self.db.createGroup("/", 'jobname', 'PySeis Node')
-
         for index, file_ in enumerate(filelist):
             ns = read_ns(file_)
             sutype = np.dtype(su_header_dtype.descr + [('data', ('f4',ns))])
-            th = self.db.createTable(node, "gather"+str(index), sutype, "Gather")
             #will need to add chunking at some point.
             with open(file_, 'rb') as f:
                 data = np.fromfile(f, dtype=sutype)
-                th.append(data)
-
+            
 
 if __name__ == '__main__':
     os.chdir('../../data/')

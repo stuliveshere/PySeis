@@ -5,7 +5,6 @@ each gather shall be a table containing both the trace header and the data
 '''
 
 import numpy as np
-import tables as tb
 import os, sys
 
 segy_textual_header_dtype = np.dtype([('TFH', (np.str_,   80))])
