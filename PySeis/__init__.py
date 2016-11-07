@@ -12,6 +12,12 @@ try:
 except ImportError:
         print "something wrong with scipy"
         sys.exit()
+
+
+#cleanup namespace
+del pad
+del fftconvolve
+del sys
         
 from . import core
 from .core import *

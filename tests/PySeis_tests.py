@@ -1,3 +1,5 @@
+from nose import with_setup 
+
 import PySeis
 
 def setup():
@@ -6,5 +8,6 @@ def setup():
 def teardown():
     print "TEAR DOWN!"
 
+@with_setup(setup, teardown)
 def test_basic():
-    print "I RAN!"
+    print dir(PySeis)
