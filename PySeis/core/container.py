@@ -1,4 +1,4 @@
-import format as su
+import su
 import numpy as np
 
 class workspace(object):
