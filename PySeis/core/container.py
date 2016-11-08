@@ -12,5 +12,6 @@ class workspace(object):
     def initialise(self, filename):
         pass
         
-    
+    def new(self, ns):
+        pass
     
