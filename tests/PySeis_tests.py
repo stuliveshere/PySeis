@@ -1,21 +1,16 @@
 from nose import with_setup 
+import numpy
 import unittest
 
 import PySeis
 
-#~ def setup():
-    #~ print "SETUP!"
-
-#~ def teardown():
-    #~ print "TEAR DOWN!"
-
-#~ @with_setup(setup, teardown)
-#~ def test_basic():
-    #~ print dir(PySeis)
- 
 class ContainerTests(unittest.TestCase):
+    def setUp(self):
+        self.suFile = './data/sample.su'
  
-    def test_container_build(self):
-        print dir(PySeis)
+    def test_initialise_SU_file(self):
         data = PySeis.workspace()
-
+        data.initialise(self.suFile)
+        self.assertIsInstance(data.data,numpy.ndarray)
+        
+        
