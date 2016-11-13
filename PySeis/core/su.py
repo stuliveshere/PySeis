@@ -94,4 +94,64 @@ traceHeaderDtype = np.dtype([
 ('ns1', np.int32),
 ])
 
-	
+def build_dtype(_ns):
+    '''
+    builds a numpy dtype as defined
+    in format. 
+    '''
+    return np.dtype(traceHeaderDtype.descr + [('data', ('<f4',_ns))])
+
+def getNs(file):
+    '''
+    reaches into the SU file and reads the number of samples
+    fom the first trace header.
+    '''
+    return np.fromfile(file, dtype=traceHeaderDtype, count=1)['ns']
+
+def loadSU(infile, outfile):
+    '''
+    initialises a file
+    i.e. memmaps the SU file to a numpy array.
+    '''
+    _ns = getNs(infile)
+    _type = build_dtype(_ns)
+    indata= np.memmap(infile, dtype=_type, mode='r')
+    outdata = np.lib.format.open_memmap(outfile, dtype=_type, shape=indata.shape, mode='w+')
+    outdata[:] = indata[:]
+    outdata.flush()
+    
+class Stream(object):
+    '''
+    streams in the seismic data in gathers
+    needs the sort order to be definied.
+    requires input to be .npy file
+    '''
+    def __init__(self, infile, outfile, order=['fldr', 'tracf']): #default to shot gathers
+        self.primaryOrder = order[0]
+        self.secondaryOrder = order[1]
+        self.indata = np.lib.format.open_memmap(infile, mode='r')    
+        self.outdata = np.lib.format.open_memmap(outfile, dtype=self.indata.dtype, shape= self.indata.shape, mode='w+') 
+        self.outdata[:] = self.indata[:]
+        self.outdata.flush()
+        
+    def __iter__(self):
+        keys = np.unique(self.indata[self.primaryOrder])
+        for key in keys:
+            mask = self.indata[self.primaryOrder] == key
+            yield self.indata[mask] .sort(order=self.secondaryOrder)
+            
+    def chunk(self, func, args=[]):
+        keys = np.unique(self.indata[self.primaryOrder])
+        for key in keys:
+            mask = self.indata[self.primaryOrder] == key
+            gather = self.outdata[mask][:].sort(order=self.secondaryOrder)
+            func(gather['data'])
+        outdata.flush()
+
+        
+            
+
+        
+        
+    
+    
