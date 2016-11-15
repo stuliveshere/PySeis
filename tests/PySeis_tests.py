@@ -16,6 +16,7 @@ class ContainerTests(unittest.TestCase):
         data = Stream(self.outfile, "test.npy")
         for gather in data:
             print np.unique(gather['fldr'])
+            gather.save()
 
         
         

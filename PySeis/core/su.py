@@ -128,15 +128,17 @@ class Gather(object):
      * its source and destination (memmapped files)
      * the mask used to extract and save
      '''
-    def __init__(self, source, destination, mask):
+    def __init__(self, source, dest, mask):
         self.data = source[mask].copy()
+        self.dest = dest
+        self.mask = mask
 
     def __getitem__(self, i):
         return self.data[i]
 
     def save(self):
-        destination[mask] = self.data
-        destination.flush()
+        self.dest[self.mask] = self.data
+        self.dest.flush()
         
         
 
