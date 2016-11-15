@@ -4,23 +4,23 @@ import unittest
 
 
 import PySeis
+from PySeis import Stream
 class ContainerTests(unittest.TestCase):
     
     def setUp(self):
-        self.file = './data/sample.su'
+        self.infile = './data/sample.su'
+        self.outfile = './data/sample.npy'
  
     def test_initialise_SU_file(self):
-        data = PySeis.workspace()
-        data.load(self.file, format="su")
-        self.assertIsInstance(data.data,np.ndarray)
-        data.save('./data/sample.npy')
+        PySeis.loadSU(self.infile, self.outfile)
+        data = Stream(self.outfile, "test.npy")
+        for gather in data:
+            print np.unique(gather['fldr'])
+            gather.save()
+
         
-        data1 = PySeis.workspace()
-        data1.load('./data/sample.npy')
-        #for name in data1.data.dtype.names:
-            #if name != "data":
-                #self.assertTrue((data.data[name] == data1.data[name]).all())
-        #self.assertTrue((data.data.tolist() == data1.data.tolist()).all())
+        
+
         
         
         

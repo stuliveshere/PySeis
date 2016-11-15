@@ -94,4 +94,83 @@ traceHeaderDtype = np.dtype([
 ('ns1', np.int32),
 ])
 
-	
+def build_dtype(_ns):
+    '''
+    builds a numpy dtype as defined
+    in format. 
+    '''
+    return np.dtype(traceHeaderDtype.descr + [('trace', ('<f4',_ns))])
+
+def getNs(file):
+    '''
+    reaches into the SU file and reads the number of samples
+    fom the first trace header.
+    '''
+    return np.fromfile(file, dtype=traceHeaderDtype, count=1)['ns']
+
+def loadSU(infile, outfile):
+    '''
+    initialises a file
+    i.e. memmaps the SU file to a numpy array.
+    '''
+    _ns = getNs(infile)
+    _type = build_dtype(_ns)
+    indata= np.memmap(infile, dtype=_type, mode='r')
+    outdata = np.lib.format.open_memmap(outfile, dtype=_type, shape=indata.shape, mode='w+')
+    outdata[:] = indata[:]
+    outdata.flush()
+    
+class Gather(object):
+    '''
+    data object which contains 
+    
+     * the gather to be processed
+     * its source and destination (memmapped files)
+     * the mask used to extract and save
+     '''
+    def __init__(self, source, dest, mask):
+        self.data = source[mask].copy()
+        self.dest = dest
+        self.mask = mask
+
+    def __getitem__(self, i):
+        return self.data[i]
+
+    def save(self):
+        self.dest[self.mask] = self.data
+        self.dest.flush()
+        
+        
+
+class Stream(object):
+    '''
+    streams in the seismic data in gathers
+    needs the sort order to be definied.
+    requires input to be .npy file
+    '''
+    def __init__(self, infile, outfile, order=['fldr', 'tracf']): #default to shot gathers
+        self.primaryOrder = order[0]
+        self.secondaryOrder = order[1]
+        self.indata = np.lib.format.open_memmap(infile, mode='r')    
+        self.outdata = np.lib.format.open_memmap(outfile, dtype=self.indata.dtype, shape= self.indata.shape, mode='w+') 
+        self.outdata[:] = self.indata[:]
+        self.outdata['trace'].fill(0.0)
+        self.outdata.flush()
+        
+    def __iter__(self):
+        keys = np.unique(self.indata[self.primaryOrder])
+        for key in keys:
+            mask = self.indata[self.primaryOrder] == key
+            gather = Gather(self.indata, self.outdata, mask)
+            gather.data.sort(order=self.secondaryOrder)
+            yield gather
+            
+
+
+        
+            
+
+        
+        
+    
+    
