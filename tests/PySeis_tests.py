@@ -17,7 +17,7 @@ class ContainerTests(unittest.TestCase):
         params = {}
         for gather in data:
             PySeis.processing.toolbox.agc(gather, **params)
-            gather.save()
+        data.close()
         PySeis.saveSU(self.path+"agc.npy", self.path+"agc.su")
 
         

@@ -1,5 +1,24 @@
 import numpy as np
 
+import time        
+
+
+#==================================================
+#                                 timing decorator
+#==================================================
+def timeit(method):
+
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+
+        print '%r %2.2f sec' % \
+              (method.__name__,  te-ts)
+        return result
+
+    return timed
+
 traceHeaderDtype = np.dtype([
 ('tracl', np.int32),
 ('tracr', np.int32),
@@ -137,6 +156,7 @@ class Gather(object):
      * its source and destination (memmapped files)
      * the mask used to extract and save
      '''
+
     def __init__(self, source, dest, mask):
         self.data = source[mask].copy()
         self.dest = dest
@@ -147,7 +167,7 @@ class Gather(object):
 
     def save(self):
         self.dest[self.mask] = self.data
-        self.dest.flush()
+        #self.dest.flush()
         
         
 
@@ -157,6 +177,7 @@ class Stream(object):
     needs the sort order to be definied.
     requires input to be .npy file
     '''
+
     def __init__(self, infile, outfile, order=['fldr', 'tracf']): #default to shot gathers
         self.primaryOrder = order[0]
         self.secondaryOrder = order[1]
@@ -165,7 +186,7 @@ class Stream(object):
         self.outdata[:] = self.indata[:]
         self.outdata['trace'].fill(0.0)
         self.outdata.flush()
-        
+
     def __iter__(self):
         keys = np.unique(self.indata[self.primaryOrder])
         for key in keys:
@@ -173,6 +194,9 @@ class Stream(object):
             gather = Gather(self.indata, self.outdata, mask)
             gather.data.sort(order=self.secondaryOrder)
             yield gather
+
+    def close(self):
+        del self.outdata
             
 
 
