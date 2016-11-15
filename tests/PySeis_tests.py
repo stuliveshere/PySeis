@@ -4,6 +4,7 @@ import unittest
 
 
 import PySeis
+from PySeis import Stream
 class ContainerTests(unittest.TestCase):
     
     def setUp(self):
@@ -11,10 +12,11 @@ class ContainerTests(unittest.TestCase):
         self.outfile = './data/sample.npy'
  
     def test_initialise_SU_file(self):
-        PySeis.su.loadSU(self.infile, self.outfile)
-        data = PySeis.su.Stream(self.outfile, "test.npy")
-        print data.indata.shape
-        data.chunk(lambda x: x/2.0, args=[])
+        PySeis.loadSU(self.infile, self.outfile)
+        data = Stream(self.outfile, "test.npy")
+        for gather in data:
+            print np.unique(gather['fldr'])
+
         
         
 

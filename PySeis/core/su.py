@@ -99,7 +99,7 @@ def build_dtype(_ns):
     builds a numpy dtype as defined
     in format. 
     '''
-    return np.dtype(traceHeaderDtype.descr + [('data', ('<f4',_ns))])
+    return np.dtype(traceHeaderDtype.descr + [('trace', ('<f4',_ns))])
 
 def getNs(file):
     '''
@@ -120,6 +120,26 @@ def loadSU(infile, outfile):
     outdata[:] = indata[:]
     outdata.flush()
     
+class Gather(object):
+    '''
+    data object which contains 
+    
+     * the gather to be processed
+     * its source and destination (memmapped files)
+     * the mask used to extract and save
+     '''
+    def __init__(self, source, destination, mask):
+        self.data = source[mask].copy()
+
+    def __getitem__(self, i):
+        return self.data[i]
+
+    def save(self):
+        destination[mask] = self.data
+        destination.flush()
+        
+        
+
 class Stream(object):
     '''
     streams in the seismic data in gathers
@@ -132,21 +152,18 @@ class Stream(object):
         self.indata = np.lib.format.open_memmap(infile, mode='r')    
         self.outdata = np.lib.format.open_memmap(outfile, dtype=self.indata.dtype, shape= self.indata.shape, mode='w+') 
         self.outdata[:] = self.indata[:]
+        self.outdata['trace'].fill(0.0)
         self.outdata.flush()
         
     def __iter__(self):
         keys = np.unique(self.indata[self.primaryOrder])
         for key in keys:
             mask = self.indata[self.primaryOrder] == key
-            yield self.indata[mask] .sort(order=self.secondaryOrder)
+            gather = Gather(self.indata, self.outdata, mask)
+            gather.data.sort(order=self.secondaryOrder)
+            yield gather
             
-    def chunk(self, func, args=[]):
-        keys = np.unique(self.indata[self.primaryOrder])
-        for key in keys:
-            mask = self.indata[self.primaryOrder] == key
-            gather = self.outdata[mask][:].sort(order=self.secondaryOrder)
-            func(gather['data'])
-        outdata.flush()
+
 
         
             
