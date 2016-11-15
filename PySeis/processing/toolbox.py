@@ -195,11 +195,11 @@ def agc(workspace, **params):
         except: 
                 window = 100
         vec = np.ones(window, 'f')
-        func = np.apply_along_axis(lambda m: np.convolve(np.abs(m), vec, mode='same'), axis=-1, arr=workspace['trace'])
-        workspace['trace'] /= func
-        workspace['trace'][~np.isfinite(workspace['trace'])] = 0
-        workspace['trace'] /= np.amax(np.abs(workspace['trace']))
-        return workspace
+        func = np.apply_along_axis(lambda m: np.convolve(np.abs(m), vec, mode='same'), axis=-1, arr=workspace.data['trace'])
+        workspace.data['trace'] /= func
+        workspace.data['trace'][~np.isfinite(workspace.data['trace'])] = 0
+        workspace.data['trace'] /= np.amax(np.abs(workspace.data['trace']))
+        return workspace.data
         
 def ricker(f, length=0.512, dt=0.001):
     t = np.linspace(-length/2, (length-dt)/2, length/dt)

@@ -120,6 +120,15 @@ def loadSU(infile, outfile):
     outdata[:] = indata[:]
     outdata.flush()
     
+def saveSU(infile, outfile):
+    ''' 
+    saves npy file infile
+    to su file outfile
+    '''
+    np.lib.format.open_memmap(infile, mode='r').tofile(outfile)
+    
+        
+    
 class Gather(object):
     '''
     data object which contains 

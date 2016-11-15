@@ -13,10 +13,12 @@ class ContainerTests(unittest.TestCase):
  
     def test_initialise_SU_file(self):
         PySeis.loadSU(self.infile, self.outfile)
-        data = Stream(self.outfile, "test.npy")
+        data = Stream(self.outfile, "./data/test.npy")
+        params = {}
         for gather in data:
-            print np.unique(gather['fldr'])
+            PySeis.processing.toolbox.agc(gather, **params)
             gather.save()
+        PySeis.saveSU("./data/test.npy", "./data/test.su")
 
         
         
