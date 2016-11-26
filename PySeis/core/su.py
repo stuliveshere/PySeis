@@ -1,6 +1,7 @@
 import numpy as np
 
-import time        
+import time      
+import sys
 
 
 #==================================================
@@ -147,6 +148,25 @@ def saveSU(infile, outfile):
     np.lib.format.open_memmap(infile, mode='r').tofile(outfile)
     
         
+
+def update_progress(progress):
+    barLength = 10 # Modify this to change the length of the progress bar
+    status = ""
+    if isinstance(progress, int):
+        progress = float(progress)
+    if not isinstance(progress, float):
+        progress = 0
+        status = "error: progress var must be float\r\n"
+    if progress < 0:
+        progress = 0
+        status = "Halt...\r\n"
+    if progress >= 1:
+        progress = 1
+        status = "Done...\r\n"
+    block = int(round(barLength*progress))
+    text = "\rMb/S: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
+    sys.stdout.write(text)
+    sys.stdout.flush()
     
 class Gather(object):
     '''
@@ -158,7 +178,7 @@ class Gather(object):
      '''
 
     def __init__(self, source, dest, mask):
-        self.data = source[mask].copy()
+        self.data = np.array(source[mask])
         self.dest = dest
         self.mask = mask
 
@@ -167,7 +187,9 @@ class Gather(object):
 
     def save(self):
         self.dest[self.mask] = self.data
-        #self.dest.flush()
+        
+    def close(self):
+        self.dest.flush()
         
         
 
@@ -187,13 +209,21 @@ class Stream(object):
         self.outdata['trace'].fill(0.0)
         self.outdata.flush()
 
+
     def __iter__(self):
         keys = np.unique(self.indata[self.primaryOrder])
-        for key in keys:
+        steps = (len(keys)*1.0)
+        t = time.time()
+        for count, key in enumerate(keys):
             mask = self.indata[self.primaryOrder] == key
             gather = Gather(self.indata, self.outdata, mask)
             gather.data.sort(order=self.secondaryOrder)
+            update_progress(gather.data.nbytes*1e-6/time.time()-t)
+            t = time.time()
             yield gather
+            
+    def save(self):
+        self.outdata[self.mask] = self.gather
 
     def close(self):
         del self.outdata
