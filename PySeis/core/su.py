@@ -1,11 +1,12 @@
 import numpy as np
 
-import time        
+
 
 
 #==================================================
-#                                 timing decorator
+#              timing decorator
 #==================================================
+import time
 def timeit(method):
 
     def timed(*args, **kw):
