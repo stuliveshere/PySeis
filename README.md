@@ -8,3 +8,6 @@ PySeis
 So somewhere in this mess is a basic working seismic processing package.  To get an idea of how I see it working, check out the scripts in Projects/test/scripts.
 
 I'm in the middle of some heavy refactor, so not much is working right now.
+
+Dependencies
+==========
