@@ -1,11 +1,6 @@
 import numpy as np
-
-<<<<<<< HEAD:PySeis/core/su.py
 import time      
 import sys
-=======
-
->>>>>>> 7a6be9164fbdd79eeb0c326727018057cdacb24f:PySeis/io/stream.py
 
 
 #==================================================

@@ -172,8 +172,7 @@ def read_traces(_file, ns, chunksize=1000):
 		#caculate size of traces
 		tracesize = 240+ns*4.0
 		ntraces = (filesize-3600)/tracesize
-	   
-		f.seek(3600)    
+		f.seek(3600)    #start at end of binary header block
 		chunks, remainder = divmod(ntraces, chunksize)
 		ibmtype = np.dtype(segy_trace_header_dtype.descr + [('data', ('<i4',ns))])
 		ftype = np.dtype(segy_trace_header_dtype.descr + [('data', ('<f4',ns))])
