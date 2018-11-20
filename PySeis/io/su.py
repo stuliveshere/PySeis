@@ -13,6 +13,7 @@ each header term can also be addressed via data['insertheaderterm']
 
 import numpy as np, sys, os, os.path
 from headers import su_header_dtype
+import logging
 
 def memory():
 	"""
@@ -35,18 +36,9 @@ def readInChunks(_file, _dtype):
 	pass
 	
 
-def calculateChunks(_file, _dtype):	
-	mem = memory()['free']
-	with open(_file, 'rb') as f:
-		f.seek(0, os.SEEK_END)
-		filesize = f.tell() #filesize in bytes
-		#caculate size of traces
-		tracesize = 240+ns*4.0
-		chunks = np.ceil(filesize/(mem/4.0))
-		print chunks
 
-def typeSU(ns):
-	return np.dtype(su_header_dtype.descr + [('trace', ('<f4',ns))])
+
+
 	
 def readSUheader(filename):
 	raw = open(filename, 'rb').read()
@@ -69,8 +61,46 @@ def writeSU(data, filename=None):
 	else:
 		data.tofile(filename)
 		
+class SU(object):
+	'''
+	To do:
+		test for endianness by checking for sane values, store in flag
+	'''
+	def __init__(self, _file):
+		self._file = _file
+		self.params = {}
+		raw = open(_file, 'rb').read(240)
+		self.ns = np.fromstring(raw, dtype=su_header_dtype, count=1).byteswap()['ns'] 
+		self._dtype = np.dtype(su_header_dtype.descr + [('trace', ('<f4',self.ns))])
+		self.calculateChunks()
+
+		
+	def calculateChunks(self):	
+		mem = memory()['free']
+		log.debug("Current free memory: %d bytes" %mem)
+		with open(self._file, 'rb') as f:
+			f.seek(0, os.SEEK_END)
+			filesize = f.tell() #filesize in bytes
+			log.debug("filesize:%d bytes" %filesize)
+			chunks = np.ceil(filesize/(mem)) #number of chunks
+			log.debug("number of chunks: %d" %chunks)
+			chunksize, remainder = divmod(filesize, chunks)
+			log.debug("chunksize: %d \n remaining bytes: %d" %(chunksize, remainder))
+			tracesize = 240+self.ns*4.0
+			log.debug("trace size: %d" %tracesize)
+			nTracesPerChunk = chunksize/tracesize
+			assert chunksize%tracesize == 0
+			
+
+	
+			
+		
+		
+		
 if __name__ == "__main__":
-	data = readSU(filename="../../data/sample.su")
+	logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+	log = logging.getLogger()
+	A = SU("../../data/big.su")
 	
 	
 

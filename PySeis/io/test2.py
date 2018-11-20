@@ -25,11 +25,11 @@ class SU(Chunker):
     '''
 
 
-    def __init__(self, filename):
+    def __init__(self, _file):
         '''
         Constructor
         '''
-        self.filename = filename
+        self.filename = _file
         self.blockHeaderMethods = []
         self.read()
         
