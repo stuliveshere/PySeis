@@ -132,8 +132,8 @@ def writeSU(data, filename=None):
 		data.tofile(filename)
 		
 if __name__ == "__main__":
-	data = readSU()
-	writeSU(data)
+	data = readSU(filename="../../data/sample.su")
+	np.save("../../data/sample.npy", data)
 	
 
 	

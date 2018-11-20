@@ -10,6 +10,18 @@ class Chunker(object):
     '''
     classdocs
     '''
+    def __init__(self, nbytes, start=0):
+        self.seek = seek
+        self.start = start
+    
+    def chunker(self):
+        pass
+    
+
+class SU(Chunker):
+    '''
+    classdocs
+    '''
 
 
     def __init__(self, filename):
@@ -17,17 +29,18 @@ class Chunker(object):
         Constructor
         '''
         self.filename = filename
-        self.read()
         self.blockHeaderMethods = []
+        self.read()
         
     def blockHeaders(self):
+        '''
+        Constructor
+        '''
         print self.blockHeaderMethods
   
         
             
-    def chunker(self):
-        pass
-
+    
         
     def read(self):
         print self.filename
@@ -35,7 +48,7 @@ class Chunker(object):
     
 class Segy(Chunker):
     def __init__(self):
-        Super().__init__()
+        
       
         
         def read_EBCDIC(_file):
@@ -95,6 +108,7 @@ class Segy(Chunker):
                 return binary
             
         self.blockHeaderMethods = [read_EBCDIC, read_bheader]
+        Super().__init__()
         
         
         
