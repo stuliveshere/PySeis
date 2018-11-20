@@ -143,8 +143,6 @@ def read_EBCDIC(_file):
 		else:
 			return None
 
-
-
 def num_traces(_file, ns):
 	with open(_file, 'rb') as f:
 		f.seek(0, os.SEEK_END)
