@@ -12,13 +12,17 @@ class Chunker(object):
     '''
 
 
-    def __init__(self, params):
+    def __init__(self, filename):
         '''
         Constructor
         '''
+        self.filename = filename
+        self.read()
+        self.blockHeaderMethods = []
         
     def blockHeaders(self):
-        self.blockHeaderMethods = []
+        print self.blockHeaderMethods
+  
         
             
     def chunker(self):
@@ -26,11 +30,13 @@ class Chunker(object):
 
         
     def read(self):
-        pass
+        print self.filename
+        self.blockHeaders()
     
 class Segy(Chunker):
-    def blockHeaders(self):
-        
+    def __init__(self):
+        Super().__init__()
+      
         
         def read_EBCDIC(_file):
             ''''function to read EBCDIC header'''
@@ -90,4 +96,10 @@ class Segy(Chunker):
             
         self.blockHeaderMethods = [read_EBCDIC, read_bheader]
         
+        
+        
+if __name__ == "__main__":
+    _file = "../../data/sample.sgy"
+    dataset = Chunker(_file)
+    
     
