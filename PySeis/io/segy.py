@@ -143,17 +143,7 @@ def read_EBCDIC(_file):
 		else:
 			return None
 
-def read_bheader(_file):
-	''''function to read binary header'''
-	with open(_file, 'rb') as f:
-		f.seek(3200)
-		binary = np.fromstring(f.read(400), dtype=segy_binary_header_dtype)
-		#endian sanity checks. this is pretty crude and will need revisting.
-		try:
-			assert 0 < binary['format'] < 9
-		except AssertionError:
-			binary = binary.byteswap()
-		return binary
+
 
 def num_traces(_file, ns):
 	with open(_file, 'rb') as f:
