@@ -1,7 +1,6 @@
 import numpy as np
 import time      
 import sys
-from headers import su_header_dtype
 
 
 #==================================================
@@ -20,9 +19,6 @@ def timeit(method):
         return result
 
     return timed
-
-
-       
 
 def update_progress(progress):
     barLength = 10 # Modify this to change the length of the progress bar
@@ -71,7 +67,7 @@ class Gather(object):
 class Stream(object):
     '''
     streams in the seismic data in gathers
-    needs the sort order to be definied.
+    needs the sort order to be defined.
     requires input to be .npy file
     '''
 
