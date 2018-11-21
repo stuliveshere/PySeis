@@ -64,14 +64,16 @@ class Gather(object):
         
         
 
-class Stream(object):
+class Flow(object):
     '''
     streams in the seismic data in gathers
     needs the sort order to be defined.
     requires input to be .npy file
+    needs a list of method objects designed to 
+    take the gathers as structured arrays
     '''
 
-    def __init__(self, infile, outfile, order=['fldr', 'tracf']): #default to shot gathers
+    def __init__(self, infile, outfile, order=['fldr', 'tracf'], methods=[]): #default to shot gathers
         self.primaryOrder = order[0]
         self.secondaryOrder = order[1]
         self.indata = np.lib.format.open_memmap(infile, mode='r')    
