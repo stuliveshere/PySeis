@@ -1,9 +1,12 @@
 '''
+	To do:
+		test for endianness by checking for sane values, store in flag
 '''
 
 import numpy as np, sys, os
 import mmap
 from headers import su_header_dtype
+import pprint
 
 
 def memory():
@@ -26,19 +29,25 @@ def memory():
 	
 class SU(object):
 	'''
-	To do:
-		test for endianness by checking for sane values, store in flag
+	reading and writing SU files, including those larger than RAM,
+	to and from .npy files
 	'''
 	def __init__(self, _file):
-		self._file = _file
 		self.params = {}
-		raw = open(_file, 'rb').read(240)
-		self.params["ns"] = self.ns = np.fromstring(raw, dtype=su_header_dtype, count=1).byteswap()['ns'] 
-		self._dtype = np.dtype(su_header_dtype.descr + [('trace', ('<f4',self.ns))])
+		self._file = self.params['filename'] = _file
+		self.readNS()
 		self.calculateChunks()
+		self.report()
 
+	def readNS(self):
+		raw = open(self._file, 'rb').read(240)
+		self.params["ns"] = self.ns = np.fromstring(raw, dtype=su_header_dtype, count=1).byteswap()['ns'][0]
+		self._dtype = np.dtype(su_header_dtype.descr + [('trace', ('<f4',self.ns))])
 		
 	def calculateChunks(self, fraction=2):	
+		'''
+		calculates chunk sizes for SU files that are larger than RAM
+		'''
 		mem = memory()['free']
 		with open(self._file, 'rb') as f:
 			f.seek(0, os.SEEK_END)
@@ -51,10 +60,15 @@ class SU(object):
 			self.params["remainder"] = remainder = filesize - chunksize*nchunks
 			assert filesize%tracesize == 0
 			assert chunksize%tracesize == 0
-			
-	
-	def write(self, _file):
-		#self.outdata = np.lib.format.open_memmap(_file, dtype=self._dtype, shape=self.params["ntraces"], mode='w+')
+
+	def report(self):		
+		pprint.pprint(self.params)
+		
+		
+	def read(self, _file):
+		'''
+		reads a SU file to a .npy file
+		'''
 		self.outdata = np.memmap(_file, mode='w+', dtype=self._dtype, shape=self.params["ntraces"])
  		with open(self._file, 'rb') as f:
 			f.seek(0)
@@ -66,16 +80,17 @@ class SU(object):
 			self.outdata[end:] = np.fromstring(f.read(self.params["remainder"]), dtype=self._dtype)
  			self.outdata.flush()
 	
-	def check(self, _infile, _outfile):
+	def write(self, _infile, _outfile):
+		'''
+		writes a .npy file to a SU file
+		'''
 		npyFile = np.memmap(_infile, dtype=self._dtype, mode='r')
 		npyFile.tofile(_outfile)
 
 if __name__ == "__main__":
-	#logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-	#log = logging.getLogger()
 	A = SU("../../data/big.su")
-	#A.write("../../data/test.npy")
-	A.check("../../data/test.npy", "../../data/check.su")
+	#A.read("../../data/test.npy")
+	#A.write("../../data/test.npy", "../../data/check.su")
 	
 	
 

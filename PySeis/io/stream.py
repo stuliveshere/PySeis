@@ -22,41 +22,7 @@ def timeit(method):
     return timed
 
 
-
-def build_dtype(_ns):
-    '''
-    builds a numpy dtype as defined
-    in format. 
-    '''
-    return np.dtype(su_header_dtype.descr + [('trace', ('<f4',_ns))])
-
-def getNs(file):
-    '''
-    reaches into the SU file and reads the number of samples
-    fom the first trace header.
-    '''
-    return np.fromfile(file, dtype=su_header_dtype, count=1)['ns']
-
-def loadSU(infile, outfile):
-    '''
-    initialises a file
-    i.e. memmaps the SU file to a numpy array.
-    '''
-    _ns = getNs(infile)
-    _type = build_dtype(_ns)
-    indata= np.memmap(infile, dtype=_type, mode='r')
-    outdata = np.lib.format.open_memmap(outfile, dtype=_type, shape=indata.shape, mode='w+')
-    outdata[:] = indata[:]
-    outdata.flush()
-    
-def saveSU(infile, outfile):
-    ''' 
-    saves npy file infile
-    to su file outfile
-    '''
-    np.lib.format.open_memmap(infile, mode='r').tofile(outfile)
-    
-        
+       
 
 def update_progress(progress):
     barLength = 10 # Modify this to change the length of the progress bar
