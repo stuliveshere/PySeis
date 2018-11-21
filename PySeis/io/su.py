@@ -1,19 +1,10 @@
-#!/usr/bin/python -d
 '''
-python SU stdin/stdout interface module
-
-	data = readSU()
-	writeSU(data)
-	
-uses custom dtypes for a very fast read/write to stdin/stdout
-returns a single np.ndarray with dtype=sufile
-a numpy 2d array of traces can be addressed as data['traces']
-each header term can also be addressed via data['insertheaderterm']
 '''
 
-import numpy as np, sys, os, os.path
+import numpy as np, sys, os
+import mmap
 from headers import su_header_dtype
-import logging
+
 
 def memory():
 	"""
@@ -32,35 +23,7 @@ def memory():
 		ret['used'] = int(ret['total']) - int(ret['free'])
 		return ret
 
-def readInChunks(_file, _dtype):
-	pass
 	
-
-
-
-
-	
-def readSUheader(filename):
-	raw = open(filename, 'rb').read()
-	return np.fromstring(raw, dtype=su_header_dtype, count=1)
-
-def readSU(filename=None):
-	if filename == None:
-		raw= sys.stdin.read()
-	else:
-		raw = open(filename, 'rb').read()
-	su_header = np.fromstring(raw, dtype=su_header_dtype, count=1)
-	ns = su_header['ns'][0]
-	file_dtype = typeSU(ns)
-	data = np.fromstring(raw, dtype=file_dtype)
-	return data
-	
-def writeSU(data, filename=None):
-	if filename == None:
-		data.tofile(sys.stdout)
-	else:
-		data.tofile(filename)
-		
 class SU(object):
 	'''
 	To do:
@@ -70,37 +33,49 @@ class SU(object):
 		self._file = _file
 		self.params = {}
 		raw = open(_file, 'rb').read(240)
-		self.ns = np.fromstring(raw, dtype=su_header_dtype, count=1).byteswap()['ns'] 
+		self.params["ns"] = self.ns = np.fromstring(raw, dtype=su_header_dtype, count=1).byteswap()['ns'] 
 		self._dtype = np.dtype(su_header_dtype.descr + [('trace', ('<f4',self.ns))])
 		self.calculateChunks()
 
 		
-	def calculateChunks(self):	
+	def calculateChunks(self, fraction=2):	
 		mem = memory()['free']
-		log.debug("Current free memory: %d bytes" %mem)
 		with open(self._file, 'rb') as f:
 			f.seek(0, os.SEEK_END)
-			filesize = f.tell() #filesize in bytes
-			log.debug("filesize:%d bytes" %filesize)
-			chunks = np.ceil(filesize/(mem)) #number of chunks
-			log.debug("number of chunks: %d" %chunks)
-			chunksize, remainder = divmod(filesize, chunks)
-			log.debug("chunksize: %d \n remaining bytes: %d" %(chunksize, remainder))
-			tracesize = 240+self.ns*4.0
-			log.debug("trace size: %d" %tracesize)
-			nTracesPerChunk = chunksize/tracesize
+			self.params["filesize"] = filesize = f.tell() #filesize in bytes
+			self.params["tracesize"] = tracesize = 240+self.ns*4.0
+			self.params["ntraces"] = ntraces = int(filesize/tracesize)
+			self.params["nchunks"] = nchunks = int(np.ceil(filesize/(mem*fraction))) #number of chunks
+			self.params["chunksize"] = chunksize = (filesize/nchunks) - (filesize/nchunks)%tracesize
+			self.params["ntperchunk"] = int(chunksize/tracesize)
+			self.params["remainder"] = remainder = filesize - chunksize*nchunks
+			assert filesize%tracesize == 0
 			assert chunksize%tracesize == 0
 			
-
 	
-			
-		
-		
-		
+	def write(self, _file):
+		#self.outdata = np.lib.format.open_memmap(_file, dtype=self._dtype, shape=self.params["ntraces"], mode='w+')
+		self.outdata = np.memmap(_file, mode='w+', dtype=self._dtype, shape=self.params["ntraces"])
+ 		with open(self._file, 'rb') as f:
+			f.seek(0)
+			for i in range(self.params["nchunks"]):
+				start = i*self.params["ntperchunk"]
+				end = (i+1)*self.params["ntperchunk"]
+				self.outdata[start:end] = np.fromstring(f.read(self.params["chunksize"]), dtype=self._dtype)
+				self.outdata.flush()
+			self.outdata[end:] = np.fromstring(f.read(self.params["remainder"]), dtype=self._dtype)
+ 			self.outdata.flush()
+	
+	def check(self, _infile, _outfile):
+		npyFile = np.memmap(_infile, dtype=self._dtype, mode='r')
+		npyFile.tofile(_outfile)
+
 if __name__ == "__main__":
-	logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-	log = logging.getLogger()
+	#logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+	#log = logging.getLogger()
 	A = SU("../../data/big.su")
+	#A.write("../../data/test.npy")
+	A.check("../../data/test.npy", "../../data/check.su")
 	
 	
 
