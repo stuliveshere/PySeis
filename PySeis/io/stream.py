@@ -73,14 +73,16 @@ class Flow(object):
     take the gathers as structured arrays
     '''
 
-    def __init__(self, infile, outfile, order=['fldr', 'tracf'], methods=[]): #default to shot gathers
+    def __init__(self, infile, outfile=None, order=['fldr', 'tracf'], methods=[]): #default to shot gathers
+        self.methods = methods
         self.primaryOrder = order[0]
         self.secondaryOrder = order[1]
-        self.indata = np.lib.format.open_memmap(infile, mode='r')    
-        self.outdata = np.lib.format.open_memmap(outfile, dtype=self.indata.dtype, shape= self.indata.shape, mode='w+') 
-        self.outdata[:] = self.indata[:]
-        self.outdata['trace'].fill(0.0)
-        self.outdata.flush()
+        self.indata = np.memmap(infile, mode='r')
+        if outfile:   
+            self.outdata = np.memmap(outfile, dtype=self.indata.dtype, shape= self.indata.shape, mode='w+') 
+            #self.outdata[:] = self.indata[:]
+            self.outdata['trace'].fill(0.0)
+            self.outdata.flush()
 
 
     def __iter__(self):
@@ -97,6 +99,16 @@ class Flow(object):
             
     def save(self):
         self.outdata[self.mask] = self.gather
+
+    def run(self):
+        '''iterates a series of gathers through the methods defined in the input.
+        if no methods are definied make a copy of the data'''
+        for gather in self:
+            pass
+            
+            
+        
+        
 
     def close(self):
         del self.outdata
