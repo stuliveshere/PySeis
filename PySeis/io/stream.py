@@ -102,7 +102,8 @@ class Flow(object):
 
     def run(self):
         '''iterates a series of gathers through the methods defined in the input.
-        if no methods are definied make a copy of the data'''
+        if no methods are definied make a copy of the data
+        this is a test 201811231427'''
         for gather in self:
             pass
             
