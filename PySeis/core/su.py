@@ -1,11 +1,15 @@
 '''
 	To do:
 		test for endianness by checking for sane values, store in flag
+
+	Use:
+		data = SU("/path/to/inputFile.su")
+		data.read("/path/to/raw.npy")
 '''
 
 import numpy as np, sys, os
 import mmap
-from headers import su_header_dtype
+from .headers import su_header_dtype
 import pprint
 
 
@@ -58,8 +62,7 @@ class SU(object):
 			self.params["chunksize"] = chunksize = (filesize/nchunks) - (filesize/nchunks)%tracesize
 			self.params["ntperchunk"] = int(chunksize/tracesize)
 			self.params["remainder"] = remainder = filesize - chunksize*nchunks
-			assert filesize%tracesize == 0
-			assert chunksize%tracesize == 0
+
 
 	def report(self):		
 		pprint.pprint(self.params)
@@ -69,8 +72,10 @@ class SU(object):
 		'''
 		reads a SU file to a .npy file
 		'''
+		assert filesize%tracesize == 0
+		assert chunksize%tracesize == 0
 		self.outdata = np.memmap(_file, mode='w+', dtype=self._dtype, shape=self.params["ntraces"])
- 		with open(self._file, 'rb') as f:
+		with open(self._file, 'rb') as f:
 			f.seek(0)
 			for i in range(self.params["nchunks"]):
 				start = i*self.params["ntperchunk"]
@@ -78,7 +83,7 @@ class SU(object):
 				self.outdata[start:end] = np.fromstring(f.read(self.params["chunksize"]), dtype=self._dtype)
 				self.outdata.flush()
 			self.outdata[end:] = np.fromstring(f.read(self.params["remainder"]), dtype=self._dtype)
- 			self.outdata.flush()
+			self.outdata.flush()
 	
 	def write(self, _infile, _outfile):
 		'''
