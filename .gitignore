@@ -9,3 +9,4 @@
 .pydevproject
 __pycache__
 .vscode
+*.SGY

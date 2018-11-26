@@ -2,9 +2,10 @@ import PySeis as ps
 import numpy as np
 import pylab
 
+print(dir(ps.io))
 #import dataset
-input = ps.io.su.SU("./data/sample.su")
-input.read("./data/raw.npy")
+input = ps.io.segy.Segy("./data/L23699.SGY")
+input.read("./data/L23699.npy")
 
 #initialise dataset
 #~ data, params = toolbox.initialise("geometries.su")

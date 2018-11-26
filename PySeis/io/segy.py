@@ -1,10 +1,10 @@
 import numpy as np
 import os, sys
-from su import memory
+from .su import memory
 import pprint
 from textwrap import wrap
 #overwrite these header definitions for custom headers
-from headers import segy_trace_header_dtype, segy_binary_header_dtype
+from .headers import segy_trace_header_dtype, segy_binary_header_dtype
 
 class Segy(object):
 	'''
@@ -16,15 +16,15 @@ class Segy(object):
 		self._file = self.params['filename'] = _file
 		self.readEBCDIC()
 		self.readBheader()
- 		self.readNS()
- 		self.calculateChunks()
+		self.readNS()
+		self.calculateChunks()
 		self.report()
 	
 	def readEBCDIC(self):
 		''''function to read EBCDIC header'''
 		with open(self._file, 'rb') as f:
 			f.seek(0)
-			header = np.fromfile(f, dtype='u2', count=3200/2)
+			header = np.fromfile(f, dtype='u2', count=1600)
 			if np.any(np.diff(header)): #check for content
 				f.seek(0)
 				self.params["EBCDIC"] = wrap(f.read(3200).decode('EBCDIC-CP-BE').encode('ascii'), 80)
@@ -76,7 +76,7 @@ class Segy(object):
 		'''
 		#ibmtype = np.dtype(segy_trace_header_dtype.descr + [('data', ('<i4',ns))]) #for the 
 		self.outdata = np.memmap(_file, mode='w+', dtype=self._dtype, shape=self.params["ntraces"])
- 		with open(self._file, 'rb') as f:
+		with open(self._file, 'rb') as f:
 			f.seek(3600)
 			for i in range(self.params["nchunks"]):
 				start = i*self.params["ntperchunk"]
@@ -88,7 +88,7 @@ class Segy(object):
 			remainder = np.fromstring(f.read(self.params["remainder"]), dtype=self._dtype)
 			remainder['trace'] = self.ibm2ieee(remainder['trace'].astype('<i4'))
 			self.outdata[end:] = remainder
- 			self.outdata.flush()
+			self.outdata.flush()
 	
 	def write(self, _infile, _outfile):
 		'''

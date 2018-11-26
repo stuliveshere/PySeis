@@ -94,7 +94,7 @@ su_header_dtype = np.dtype([
 ('ns1', np.int32),
 ])
 
-segy_textual_header_dtype = np.dtype([('TFH', (np.str_,   80))])
+segy_textual_header_dtype = np.dtype([('TFH', (np.str,   80))])
 
 segy_binary_header_dtype = np.dtype([
 	('jobid', 'i4'),
@@ -124,11 +124,11 @@ segy_binary_header_dtype = np.dtype([
 	('mfeet', 'i2'), # strongly recommended
 	('polyv', 'i2'),
 	('vpol', 'i2'),
-	('unassigned_1', (np.str_,   240)),
+	('unassigned_1', (np.str,   240)),
 	('segyrev', 'i2'), # mandatory (all)
 	('fixedlen', 'i2'), # mandatory (all)
 	('numhdr', 'i2'), # mandatory (all)
-	('unassigned_2', (np.str_,   94)),
+	('unassigned_2', (np.str,   94)),
 ])
 
 segy_trace_header_dtype = np.dtype([

@@ -4,13 +4,16 @@ Created on 20 Nov. 2018
 @author: sfletcher
 '''
 
-import urllib2
+import requests
+
+urlpath = "https://certmapper.cr.usgs.gov/data/NPRA/seismic/1975/30x_75/DMUX/"
+urlfiles = ["L23699.SGY"]+["L2370%d.SGY" %a for a in range(10)]
+urls = [urlpath+a for a in urlfiles]
+print(urls)
+
 
 if __name__ == '__main__':
-    urls = ["http://www.velseis.com/publications/sample.sgy", "http://www.velseis.com/publications/sample.su"]
     for url in urls:
-        fname = url.split("/")[-1]
-        response = urllib2.urlopen(url)
-        data = response.read()
-        with open(fname, 'w') as f:
-            f.write(data)
+        fname = "./data/"+url.split("/")[-1]
+        r = requests.get(url)
+        open(fname , 'wb').write(r.content)

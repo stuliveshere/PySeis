@@ -18,6 +18,5 @@ except ImportError:
 del pad
 del fftconvolve
 del sys
-        
-from . import core
-from .core import *
+
+from . import io
