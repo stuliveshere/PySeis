@@ -4,8 +4,7 @@ import pylab
 
 #import dataset
 input = ps.core.su.SU("./data/sample.su")
-input.report()
-input.read("./data/raw/npy")
+input.read("./data/raw.npy")
 
 #initialise dataset
 #~ data, params = toolbox.initialise("geometries.su")

@@ -38,6 +38,7 @@ class SU(object):
 	'''
 	def __init__(self, _file):
 		self.params = {}
+		self.params['byteswap'] = False
 		self._file = self.params['filename'] = _file
 		self.readNS()
 		self.calculateChunks()
@@ -45,7 +46,12 @@ class SU(object):
 
 	def readNS(self):
 		raw = open(self._file, 'rb').read(240)
-		self.params["ns"] = self.ns = np.fromstring(raw, dtype=su_header_dtype, count=1).byteswap()['ns'][0]
+		self.ns = ns1 = np.fromstring(raw, dtype=su_header_dtype, count=1)['ns'][0]
+		ns2 = np.fromstring(raw, dtype=su_header_dtype, count=1).byteswap()['ns'][0]
+		if ns2 < ns1:
+			self.params['byteswap'] = True
+			self.ns = ns2
+		self.params["ns"] = self.ns
 		self._dtype = np.dtype(su_header_dtype.descr + [('trace', ('<f4',self.ns))])
 		
 	def calculateChunks(self, fraction=2):	
@@ -57,11 +63,11 @@ class SU(object):
 			f.seek(0, os.SEEK_END)
 			self.params["filesize"] = filesize = f.tell() #filesize in bytes
 			self.params["tracesize"] = tracesize = 240+self.ns*4.0
-			self.params["ntraces"] = ntraces = int(filesize/tracesize)
+			self.params["ntraces"] = int(filesize/tracesize)
 			self.params["nchunks"] = nchunks = int(np.ceil(filesize/(mem*fraction))) #number of chunks
-			self.params["chunksize"] = chunksize = (filesize/nchunks) - (filesize/nchunks)%tracesize
+			self.params["chunksize"] = chunksize = int((filesize/nchunks) - (filesize/nchunks)%tracesize)
 			self.params["ntperchunk"] = int(chunksize/tracesize)
-			self.params["remainder"] = remainder = filesize - chunksize*nchunks
+			self.params["remainder"] = filesize - chunksize*nchunks
 
 
 	def report(self):		
@@ -72,17 +78,21 @@ class SU(object):
 		'''
 		reads a SU file to a .npy file
 		'''
-		assert filesize%tracesize == 0
-		assert chunksize%tracesize == 0
+		assert self.params['filesize']%self.params['tracesize'] == 0.0
+		assert self.params['chunksize']%self.params['tracesize'] == 0.0
 		self.outdata = np.memmap(_file, mode='w+', dtype=self._dtype, shape=self.params["ntraces"])
 		with open(self._file, 'rb') as f:
 			f.seek(0)
 			for i in range(self.params["nchunks"]):
-				start = i*self.params["ntperchunk"]
-				end = (i+1)*self.params["ntperchunk"]
-				self.outdata[start:end] = np.fromstring(f.read(self.params["chunksize"]), dtype=self._dtype)
+				start = int(i*self.params["ntperchunk"])
+				end = int((i+1)*self.params["ntperchunk"])
+				if self.params['byteswap']: self.outdata[start:end] = np.fromstring(f.read(self.params["chunksize"]).byteswap(), dtype=self._dtype)
+				else: self.outdata[start:end] = np.fromstring(f.read(self.params["chunksize"]), dtype=self._dtype)
 				self.outdata.flush()
-			self.outdata[end:] = np.fromstring(f.read(self.params["remainder"]), dtype=self._dtype)
+			
+			if self.params['byteswap']: self.outdata[end:] = np.fromstring(f.read(self.params["remainder"]).byteswap(), dtype=self._dtype)
+			else: self.outdata[end:] = np.fromstring(f.read(self.params["remainder"]), dtype=self._dtype)
+
 			self.outdata.flush()
 	
 	def write(self, _infile, _outfile):
