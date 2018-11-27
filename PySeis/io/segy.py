@@ -27,22 +27,28 @@ class Segy(object):
 			header = np.fromfile(f, dtype='u2', count=1600)
 			if np.any(np.diff(header)): #check for content
 				f.seek(0)
-				self.params["EBCDIC"] = wrap(f.read(3200).decode('EBCDIC-CP-BE').encode('ascii'), 80)
+				self.params["EBCDIC"] = wrap(str(f.read(3200).decode('EBCDIC-CP-BE').encode('ascii')), 80)
 			else:
 				self.params["EBCDIC"] = "No EBCDIC header found"
-				
+
+
 	def readBheader(self):
 		'''function to read binary header'''
-	
+
 		with open(self._file, 'rb') as f:
 			f.seek(3200)
-			binary = np.fromstring(f.read(400), dtype=segy_binary_header_dtype)
+			bheader = np.fromfile(f, dtype=segy_binary_header_dtype, count=1)
 			#endian sanity checks. this is pretty crude and will need revisting.
 			try:
-				assert 0 < binary['format'] < 9
+				assert 0 < bheader['format'] < 9
 			except AssertionError:
-				binary = binary.byteswap()
-			self.params['bheader'] = {name:binary[name][-1] for name in binary.dtype.names}
+				bheader = bheader.byteswap()
+		self.params['bheader'] = {}
+		for name in bheader.dtype.names:
+			try:
+				self.params['bheader'][name] = bheader[name][-1]
+			except UnicodeDecodeError:
+				pass
 
 	def readNS(self):
 		'''to do: add asserts'''
@@ -60,7 +66,7 @@ class Segy(object):
 			self.params["tracesize"] = tracesize = 240+(self.params["ns"]*4)
 			self.params["ntraces"] = ntraces = int(filesize/tracesize)
 			self.params["nchunks"] = nchunks = int(np.ceil(filesize/(mem*fraction))) #number of chunks
-			self.params["chunksize"] = chunksize = (filesize/nchunks) - (filesize/nchunks)%tracesize
+			self.params["chunksize"] = chunksize = int((filesize/nchunks) - (filesize/nchunks)%tracesize)
 			self.params["ntperchunk"] = int(chunksize/tracesize)
 			self.params["remainder"] = remainder = filesize - chunksize*nchunks
 			assert filesize%tracesize == 0
