@@ -81,7 +81,7 @@ class Segy(object):
 		reads a Segy file to a .npy file. assumed IBM floats fot now. extend for all data types
 		'''
 		#ibmtype = np.dtype(segy_trace_header_dtype.descr + [('data', ('<i4',ns))]) #for the 
-		self.outdata = np.memmap(_file, mode='w+', dtype=self._dtype, shape=self.params["ntraces"])
+		self.outdata = np.lib.format.open_memmap(_file, mode='w+', dtype=self._dtype, shape=self.params["ntraces"])
 		with open(self._file, 'rb') as f:
 			f.seek(3600)
 			for i in range(self.params["nchunks"]):
