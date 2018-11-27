@@ -76,7 +76,7 @@ class Segy(object):
 		pprint.pprint(self.params)
 		
 		
-	def read(self, _file, offset=3600):
+	def read(self, _file):
 		'''
 		reads a Segy file to a .npy file. assumed IBM floats fot now. extend for all data types
 		'''
