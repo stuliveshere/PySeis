@@ -82,7 +82,7 @@ class Segy(object):
 		'''
 		reads a Segy file to a .npy file. assumed IBM floats fot now. extend for all data types
 		'''
-		if overwrite=0 and os.path.isfile(path): return
+		if (overwrite==0 and os.path.isfile(_file)): return
 		self.outdata = np.lib.format.open_memmap(_file, mode='w+', dtype=self._dtype, shape=self.params["ntraces"])
 		with open(self._file, 'rb') as f:
 			f.seek(3600)
