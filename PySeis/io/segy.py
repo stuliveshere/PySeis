@@ -4,7 +4,9 @@ from .su import memory
 import pprint
 from textwrap import wrap
 #overwrite these header definitions for custom headers
-from .headers import segy_trace_header_dtype, segy_binary_header_dtype
+from .headers import segy_trace_header_dtype, segy_binary_header_dtype, segy_trace_header_repack
+import numpy.lib.recfunctions as rf 
+
 
 class Segy(object):
 	'''
@@ -24,15 +26,9 @@ class Segy(object):
 	
 	def readEBCDIC(self):
 		''''function to read EBCDIC header'''
-		with open(self._file, 'rb') as f:
+		with open(self._file, "rt", "cp500") as f:
 			f.seek(0)
-			header = np.fromfile(f, dtype='u2', count=1600)
-			if np.any(np.diff(header)): #check for content
-				f.seek(0)
-				self.params["EBCDIC"] = wrap(str(f.read(3200).decode('EBCDIC-CP-BE').encode('ascii')), 80)
-			else:
-				self.params["EBCDIC"] = "No EBCDIC header found"
-
+			self.params["EBCDIC"] = wrap(str(f.read(3200), 80)
 
 	def readBheader(self):
 		'''function to read binary header'''
@@ -55,7 +51,8 @@ class Segy(object):
 	def readNS(self):
 		'''to do: add asserts'''
 		ns = self.params["ns"] = self.params['bheader']['hns']
-		self._dtype = np.dtype(segy_trace_header_dtype.descr + [('trace', ('<f4',ns))])
+		_dtype = segy_trace_header_repack([('trace', ('<f4', ns), 240)])
+		self._dtype=rf.repack_fields(_dtype)
 		
 	def calculateChunks(self, fraction=2, offset=3600):	
 		'''
