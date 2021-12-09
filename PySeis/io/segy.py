@@ -78,11 +78,11 @@ class Segy(object):
 		if self.verbose: pprint.pprint(self.params)
 		
 		
-	def read(self, _file):
+	def read(self, _file, overwrite=0):
 		'''
 		reads a Segy file to a .npy file. assumed IBM floats fot now. extend for all data types
 		'''
-		#ibmtype = np.dtype(segy_trace_header_dtype.descr + [('data', ('<i4',ns))]) #for the 
+		if overwrite=0 and os.path.isfile(path): return
 		self.outdata = np.lib.format.open_memmap(_file, mode='w+', dtype=self._dtype, shape=self.params["ntraces"])
 		with open(self._file, 'rb') as f:
 			f.seek(3600)
