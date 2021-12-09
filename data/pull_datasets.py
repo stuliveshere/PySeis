@@ -15,15 +15,16 @@ Created on 20 Nov. 2018
 '''
 
 import urllib.request
-import tarfile
+import tarfile, os
 
 url = "http://www.geofizyka.pl/2D_Land_vibro_data_2ms.tgz"
-save_to = "2D_Land_vibro_data_2ms.tgz"
+_file = "2D_Land_vibro_data_2ms.tgz"
 
 
 if __name__ == '__main__':
-    #r = urllib.request.urlopen(url)
-    #open(save_to , 'wb').write(r.read())
-    tar = tarfile.open(save_to)
+    if not os.path.isfile(_file):
+        r = urllib.request.urlopen(url)
+        open(_file , 'wb').write(r.read())
+    tar = tarfile.open(_file)
     tar.extractall()
     tar.close()
