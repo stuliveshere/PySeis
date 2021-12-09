@@ -1,2 +1,4 @@
-sample.sgy
-/big.su.1
+*.sgy
+Line.*
+*.tgz
+

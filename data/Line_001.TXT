@@ -1,0 +1,25 @@
+LINE_001
+
+This data is public domain 
+
+Nominal Receiver Station Interval :  25.00
+Nominal Source Station Interval...:  50.00
+First SP Station Number...........:    701
+Last SP Station Number............:   1201
+First Live Station Number.........:    561
+Last Live Station Number..........:   1342
+Original Reference Level..........:      0
+Reference Velocity................: 1900.0 
+Source Skid0 .....................:  12.50
+Source........................... : VIBROSEIS 
+Sweep type........................: UP +3db/oct
+Sweep freq........................: 8Hz-95Hz
+Sweep length......................: 15
+Taper,length start,end............: Cosine,0.3sec,0.5sec
+Geophone type.....................: SM-4
+Geophone freq ....................: 10Hz    
+No of geophones per group.........: 24
+Geophone array....................: 25m (linear) 
+
+
+
