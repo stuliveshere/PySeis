@@ -11,14 +11,16 @@ class Segy(object):
 	reading and writing segy files, including those larger than RAM,
 	to and from .npy files
 	'''
-	def __init__(self, _file):
+	def __init__(self, _file, verbose=0):
 		self.params = {}
+		self.verbose = verbose
 		self._file = self.params['filename'] = _file
 		self.readEBCDIC()
 		self.readBheader()
 		self.readNS()
 		self.calculateChunks()
 		self.report()
+
 	
 	def readEBCDIC(self):
 		''''function to read EBCDIC header'''
@@ -72,8 +74,8 @@ class Segy(object):
 			assert filesize%tracesize == 0
 			assert chunksize%tracesize == 0
 
-	def report(self):		
-		pprint.pprint(self.params)
+	def report(self):
+		if self.verbose: pprint.pprint(self.params)
 		
 		
 	def read(self, _file):
@@ -110,6 +112,9 @@ class Segy(object):
 		fraction = (ibm & 0x00ffffff).astype(np.float32) / 16777216.0
 		ieee = (1.0 - 2.0 * s) * fraction * np.power(np.float32(16.0), exp - 64.0) 
 		return ieee
+
+	def log(self, message):
+		if self.verbose: print(message)
 
 if __name__ == "__main__":
 	file = "../../data/sample.sgy"
