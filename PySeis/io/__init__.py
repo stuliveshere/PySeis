@@ -1,3 +1,3 @@
 from .segy import Segy
 
-from . import su
+#from . import su

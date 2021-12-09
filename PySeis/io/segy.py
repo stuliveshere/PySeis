@@ -1,11 +1,11 @@
 import numpy as np
 import os, sys
-from .su import memory
 import pprint
-from textwrap import wrap
 #overwrite these header definitions for custom headers
-from .headers import segy_trace_header_dtype, segy_binary_header_dtype, segy_trace_header_repack
-import numpy.lib.recfunctions as rf 
+from .tools import pack_dtype, memory
+from .headers import segy_binary_header, segy_trace_header
+from numpy.lib.format import open_memmap
+import dask, dask.array as da
 
 
 class Segy(object):
@@ -26,16 +26,17 @@ class Segy(object):
 	
 	def readEBCDIC(self):
 		''''function to read EBCDIC header'''
-		with open(self._file, "rt", "cp500") as f:
+		with open(file=self._file, mode="rt", encoding="cp500") as f:
 			f.seek(0)
-			self.params["EBCDIC"] = wrap(str(f.read(3200), 80)
+			self.params["EBCDIC"] = f.read(3200)
 
 	def readBheader(self):
 		'''function to read binary header'''
+		_dtype=pack_dtype(values=segy_binary_header)
 
 		with open(self._file, 'rb') as f:
 			f.seek(3200)
-			bheader = np.fromfile(f, dtype=segy_binary_header_dtype, count=1)
+			bheader = np.fromfile(f, dtype=_dtype, count=1)
 			#endian sanity checks. this is pretty crude and will need revisting.
 			try:
 				assert 0 < bheader['format'] < 9
@@ -51,17 +52,18 @@ class Segy(object):
 	def readNS(self):
 		'''to do: add asserts'''
 		ns = self.params["ns"] = self.params['bheader']['hns']
-		_dtype = segy_trace_header_repack([('trace', ('<f4', ns), 240)])
-		self._dtype=rf.repack_fields(_dtype)
+		self._dtype = pack_dtype(values=segy_trace_header + [('trace', ('<f4', ns), 240)])
+
 		
 	def calculateChunks(self, fraction=2, offset=3600):	
 		'''
 		calculates chunk sizes for Segy files that are larger than RAM
+		fraction: fraction of ram per chunk
 		'''
 		mem = memory()['free']
 		with open(self._file, 'rb') as f:
 			f.seek(0, os.SEEK_END)
-			self.params["filesize"] = filesize = f.tell()-offset #filesize in bytes
+			self.params["filesize"] = filesize = f.tell()-offset #filesize in bytes, minus headers
 			self.params["tracesize"] = tracesize = 240+(self.params["ns"]*4)
 			self.params["ntraces"] = ntraces = int(filesize/tracesize)
 			self.params["nchunks"] = nchunks = int(np.ceil(filesize/(mem*fraction))) #number of chunks
@@ -77,24 +79,19 @@ class Segy(object):
 		
 	def read(self, _file, overwrite=0):
 		'''
-		reads a Segy file to a .npy file. assumed IBM floats fot now. extend for all data types
+		reads a Segy file to a .npy file. assumed IBM floats for now. extend for all data types
 		'''
-		if (overwrite==0 and os.path.isfile(_file)): return
-		self.outdata = np.lib.format.open_memmap(_file, mode='w+', dtype=self._dtype, shape=self.params["ntraces"])
-		with open(self._file, 'rb') as f:
-			f.seek(3600)
-			for i in range(self.params["nchunks"]):
-				start = i*self.params["ntperchunk"]
-				end = (i+1)*self.params["ntperchunk"]
-				chunk = np.fromstring(f.read(self.params["chunksize"]), dtype=self._dtype)
-				chunk['trace'] = self.ibm2ieee(chunk['trace'].astype('<i4'))
-				self.outdata[start:end] = chunk
-				self.outdata.flush()
-			remainder = np.fromstring(f.read(self.params["remainder"]), dtype=self._dtype)
-			remainder['trace'] = self.ibm2ieee(remainder['trace'].astype('<i4'))
-			self.outdata[end:] = remainder
-			self.outdata.flush()
-	
+		self.outdata =np.memmap(filename=_file, dtype=self._dtype, mode='w+', shape=self.params["ntraces"], order="F")
+		for i in range(self.params["ntraces"]):
+			chunk = np.fromfile(self._file, dtype=self._dtype, count=1, offset=3600+(i*self.params["tracesize"])).byteswap()
+			#chunk['trace'] = self.ibm2ieee(chunk['trace'].astype('<i4'))
+			self.outdata[i] = chunk
+		self.outdata.flush()
+		data = np.memmap(filename=_file, dtype=self._dtype, mode='r+', shape=self.params["ntraces"], order="F")
+		a = da.from_array(data)
+		data['trace'] = self.ibm2ieee(a['trace'].astype('<i4'))
+		data.flush()
+
 	def write(self, _infile, _outfile):
 		'''
 		writes a .npy file to a segy file
@@ -102,7 +99,8 @@ class Segy(object):
 		#npyFile = np.memmap(_infile, dtype=self._dtype, mode='r')
 		#npyFile.tofile(_outfile)
 		pass
-		
+
+
 	def ibm2ieee(self, ibm):
 		s = ibm >> 31 & 0x01 
 		exp = ibm >> 24 & 0x7f 
@@ -113,7 +111,3 @@ class Segy(object):
 	def log(self, message):
 		if self.verbose: print(message)
 
-if __name__ == "__main__":
-	file = "../../data/sample.sgy"
-	A = Segy(file)
-	A.read("../../data/sample.npy")

@@ -5,11 +5,9 @@ import PySeis as ps
 
 dataset = "../../data/Line_001.sgy"
 
-print(dir(ps.io))
-
 #import dataset
 input = ps.io.Segy(dataset, verbose=1)
-# input.read("./data/L23699.npy")
+input.read("Line_001.npy", overwrite=1) #will skip over this if file already exists
 
 #initialise dataset
 #~ data, params = toolbox.initialise("geometries.su")

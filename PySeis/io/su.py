@@ -9,26 +9,8 @@
 
 import numpy as np, sys, os
 import mmap
-from .headers import su_header_dtype
+from .headers import su_trace_header
 import pprint
-
-
-def memory():
-	"""
-	Get node total memory and memory usage
-	"""
-	with open('/proc/meminfo', 'r') as mem:
-		ret = {}
-		tmp = 0
-		for i in mem:
-			sline = i.split()
-			if str(sline[0]) == 'MemTotal:':
-				ret['total'] = int(sline[1])
-			elif str(sline[0]) in ('MemFree:', 'Buffers:', 'Cached:'):
-				tmp += int(sline[1])
-		ret['free'] = tmp
-		ret['used'] = int(ret['total']) - int(ret['free'])
-		return ret
 
 	
 class SU(object):
@@ -52,7 +34,7 @@ class SU(object):
 			self.params['byteswap'] = True
 			self.ns = ns2
 		self.params["ns"] = self.ns
-		self._dtype = np.dtype(su_header_dtype.descr + [('trace', ('<f4',self.ns))])
+		self._dtype = pack_dtype(values=su_trace_header + [('trace', ('<f4', ns), 240)])
 		
 	def calculateChunks(self, fraction=2):	
 		'''
