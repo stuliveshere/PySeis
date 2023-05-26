@@ -20,7 +20,6 @@ class Segy(object):
 		self.readEBCDIC()
 		self.readBheader()
 		self.readNS()
-		self.calculateChunks()
 		self.report()
 
 	
@@ -30,18 +29,26 @@ class Segy(object):
 			f.seek(0)
 			self.params["EBCDIC"] = f.read(3200)
 
+	def writeEBCDIC(self, outfile, text=None):
+		'''function to write EBCDIC header'''
+		if text == None: text = self.params["EBCDIC"]
+		if len(text) != 3200:
+			raise ValueError("Text must be exactly 3200 characters long")
+		with open(file=outfile, mode="wt", encoding="cp500") as f:
+			f.write(text)
+
 	def readBheader(self):
 		'''function to read binary header'''
 		_dtype=pack_dtype(values=segy_binary_header)
-
 		with open(self._file, 'rb') as f:
 			f.seek(3200)
 			bheader = np.fromfile(f, dtype=_dtype, count=1)
+			self.bheader = bheader
+		with open(self._file, 'rb') as f:
+			f.seek(3200)
+			bheader = np.fromfile(f, dtype=_dtype, count=1)
+			self.bheader = bheader
 			#endian sanity checks. this is pretty crude and will need revisting.
-			try:
-				assert 0 < bheader['format'] < 9
-			except AssertionError:
-				bheader = bheader.byteswap()
 		self.params['bheader'] = {}
 		for name in bheader.dtype.names:
 			try:
@@ -49,11 +56,27 @@ class Segy(object):
 			except UnicodeDecodeError:
 				pass
 
+	def writeBheader(self, outfile, bheader=None):
+		'''function to write binary header
+		   helper functions should be written 
+		   which will update bheader based upon 
+		   self.bheader'''
+		
+		if bheader == None: bheader = self.bheader
+		_dtype=pack_dtype(values=segy_binary_header)
+		
+		# Ensure the dtype is big endian
+		_dtype = _dtype.newbyteorder('>')
+		bheader = bheader.astype(_dtype)
+
+		with open(outfile, 'r+b') as f:  # 'r+b' to read and write in binary mode
+			f.seek(3200)  # move to the start of the binary header
+			bheader.tofile(f)
+
+
 	def readNS(self):
 		'''to do: add asserts'''
 		ns = self.params["ns"] = self.params['bheader']['hns']
-		self._dtype = pack_dtype(values=segy_trace_header + [('trace', ('<f4', ns), 240)])
-
 		
 	def calculateChunks(self, fraction=2, offset=3600):	
 		'''
@@ -77,36 +100,97 @@ class Segy(object):
 		if self.verbose: pprint.pprint(self.params)
 		
 		
-	def read(self, _file, overwrite=0):
+	def read(self, overwrite=0):
 		'''
-		reads a Segy file to a .npy file. assumed IBM floats for now. extend for all data types
+		reads a Segy file to a .npy file in chunks. assumed IBM floats for now. extend for all data types
+		
 		'''
-		self.outdata =np.memmap(filename=_file, dtype=self._dtype, mode='w+', shape=self.params["ntraces"], order="F")
-		for i in range(self.params["ntraces"]):
-			chunk = np.fromfile(self._file, dtype=self._dtype, count=1, offset=3600+(i*self.params["tracesize"])).byteswap()
-			#chunk['trace'] = self.ibm2ieee(chunk['trace'].astype('<i4'))
-			self.outdata[i] = chunk
+		self.calculateChunks()
+		self.in_dtype = pack_dtype(values=segy_trace_header + [('trace', ('i4', self.params['ns']), 240)])
+		self._dtype = pack_dtype(values=segy_trace_header + [('trace', (np.float32, self.params['ns']), 240)])
+		self.outdata = np.memmap(filename=self._file+".npy", dtype=self._dtype, mode='w+', shape=self.params["ntraces"], order="F")
+		
+		nchunks = self.params["nchunks"]
+		ntperchunk = self.params["ntperchunk"]
+		remainder = self.params["remainder"]
+		
+		for i in range(nchunks):
+			start_trace = i * ntperchunk
+			end_trace = start_trace + ntperchunk
+			chunk = np.fromfile(self._file, dtype=self.in_dtype, count=ntperchunk, offset=3600+(start_trace*self.params["tracesize"]))
+			self.outdata[start_trace:end_trace] = chunk
+
+	
+		# process the remaining traces
+		if remainder > 0:
+			start_trace = nchunks * ntperchunk
+			chunk = np.fromfile(self._file, dtype=self.in_dtype, count=remainder, offset=3600+(start_trace*self.params["tracesize"]))
+			self.outdata[start_trace:] = chunk
+		
 		self.outdata.flush()
-		data = np.memmap(filename=_file, dtype=self._dtype, mode='r+', shape=self.params["ntraces"], order="F")
-		a = da.from_array(data)
-		data['trace'] = self.ibm2ieee(a['trace'].astype('<i4'))
-		data.flush()
+		self.outdata['trace'] = self.ibm2ieee(self.outdata['trace'].astype('i4'))
+
+		# data = np.memmap(filename=self._file+".npy", dtype=self._dtype, mode='r+', shape=self.params["ntraces"])#, order="F")
+		# data['trace'] = 
+		# data
+		# # print(self.ibm2ieee(data['trace'])[0])
+		# print(data['trace'][0])
+		# data.flush()
+		return self.outdata
 
 	def write(self, _infile, _outfile):
-		'''
-		writes a .npy file to a segy file
-		'''
-		#npyFile = np.memmap(_infile, dtype=self._dtype, mode='r')
-		#npyFile.tofile(_outfile)
-		pass
+		"""
+		Writes a Segy file from a .npy file.
+		"""
+		# Load .npy file
+		self.out_dtype = pack_dtype(values=segy_trace_header + [('trace', ('>f4', self.params['ns']), 240)])
+		data = np.memmap(filename=_infile, dtype=self.out_dtype, mode='r+', order="F")
+		# Convert IEEE floats back to IBM floats
+		# data['trace'] = self.ieee2ibm(data['trace'].astype('<i4'))
+		self.writeEBCDIC(_outfile)
+		self.writeBheader(_outfile)
 
+		with open(_outfile, 'r+b') as segyfile:
+			for trace in data:
+				segyfile.write(trace.tobytes())
 
 	def ibm2ieee(self, ibm):
-		s = ibm >> 31 & 0x01 
-		exp = ibm >> 24 & 0x7f 
-		fraction = (ibm & 0x00ffffff).astype(np.float32) / 16777216.0
-		ieee = (1.0 - 2.0 * s) * fraction * np.power(np.float32(16.0), exp - 64.0) 
+		sign = ibm >> 31 & 0x01
+		exponent = (ibm >> 24 & 0x7f)
+		mantissa = (ibm & 0x00ffffff)
+		mantissa = (mantissa * np.float32(1.0)) / pow(2.0, 24.0)
+		ieee = (1.0 - 2.0 * sign) * mantissa * np.power(np.float32(16.0), exponent - 64.0)
 		return ieee
+
+	def ieee2ibm(self, ieee):
+		ieee = ieee.astype(np.float32)
+		expmask = 0x7f800000
+		signmask = 0x80000000
+		mantmask = 0x7fffff
+		asint = ieee.view('i4')
+		signbit = asint & signmask
+		exponent = ((asint & expmask) >> 23) - 127
+		# The IBM 7-bit exponent is to the base 16 and the mantissa is presumed to
+		# be entirely to the right of the radix point. In contrast, the IEEE
+		# exponent is to the base 2 and there is an assumed 1-bit to the left of the
+		# radix point.
+		exp16 = ((exponent+1) // 4)
+		exp_remainder = (exponent+1) % 4
+		exp16 += exp_remainder != 0
+		downshift = np.where(exp_remainder, 4-exp_remainder, 0)
+		ibm_exponent = np.clip(exp16 + 64, 0, 127)
+		expbits = ibm_exponent << 24
+		# Add the implicit initial 1-bit to the 23-bit IEEE mantissa to get the
+		# 24-bit IBM mantissa. Downshift it by the remainder from the exponent's
+		# division by 4. It is allowed to have up to 3 leading 0s.
+		ibm_mantissa = ((asint & mantmask) | 0x800000) >> downshift
+		# Special-case 0.0
+		ibm_mantissa = np.where(ieee, ibm_mantissa, 0)
+		expbits = np.where(ieee, expbits, 0)
+		return signbit | expbits | ibm_mantissa
+
+
+
 
 	def log(self, message):
 		if self.verbose: print(message)
