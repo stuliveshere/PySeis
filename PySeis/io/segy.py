@@ -130,12 +130,6 @@ class Segy(object):
 		self.outdata.flush()
 		self.outdata['trace'] = self.ibm2ieee(self.outdata['trace'].astype('i4'))
 
-		# data = np.memmap(filename=self._file+".npy", dtype=self._dtype, mode='r+', shape=self.params["ntraces"])#, order="F")
-		# data['trace'] = 
-		# data
-		# # print(self.ibm2ieee(data['trace'])[0])
-		# print(data['trace'][0])
-		# data.flush()
 		return self.outdata
 
 	def write(self, _infile, _outfile):
