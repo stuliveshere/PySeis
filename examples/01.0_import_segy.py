@@ -1,44 +1,26 @@
 import sys
-sys.path.insert(1, '../../')
+sys.path.insert(1, '../../PySeis')
 import numpy as np
-import PySeis as ps
+from PySeis.io.segy import Segy
+from os.path import join
 
-dataset = "../../data/Line_001.sgy"
+# Define base path
+base_path = "../data/"
+
+#define the input file
+input_sgy = join(base_path, "Line_001.sgy")
 
 #import dataset
-input = ps.io.Segy(dataset, verbose=1)
-input.read("Line_001.npy", overwrite=1) #will skip over this if file already exists
+''' 
+when you initialise the class (e.g. Segy("somefile.sgy)) it will 
+		readEBCDIC()
+		readBheader()
+		readNS()
+		report() (if verbose=1)
 
-#initialise dataset
-#~ data, params = toolbox.initialise("geometries.su")
+the EBCDIC is stored in self.params["EBCDIC"]
+the BHEADER is stores as an array self.bheader as well as dictionary values in self.params["BHEADER"]
 
-#trim data
-#~ params['ns'] = 1500
-#~ data = toolbox.slice(data, None, **params)
-#~ data.tofile("geom_short.su")
-
-#initialise dataset
-#data, params = toolbox.initialise("geom_short.su")
-
-#agc
-#~ toolbox.agc(data, None, **params)
-
-#params['gamma'] = 1.5
-#toolbox.tar(data, None, **params)
-
-#kills = [270, 300, 374, 614] #fldr
-
-#mask = toolbox.build_mask(data['fldr'], kills)
-
-#data = data[mask]
-#data.tofile("prepro.su")
-
-#display
-#~ params['primary'] = 'fldr'
-#~ params['secondary'] = 'tracf'
-#~ params['wiggle'] = True
-#~ toolbox.display(data, **params)
-
-#~ pylab.show()
-
-
+'''
+input = Segy(input_sgy, verbose=1)
+input.read() 
