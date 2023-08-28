@@ -104,13 +104,12 @@ class Segy(object):
 		reads a Segy file to a .npy file using dask. assumed IBM floats for now. extend for all data types
 		
 		'''
-	
+		#temporary dtype to preserve the byte order before ibm2ieee conversion
 		self.in_dtype = pack_dtype(values=segy_trace_header + [('trace', ('>i4', self.params['ns']), 240)])
-
 		# Load the entire file lazily using Dask (with appropriate chunking)
 		entire_file = da.from_array(np.memmap(filename=self._file, dtype=self.in_dtype, mode='r', offset=3600), chunks='auto')
 		#memmap an empty copy on disk
-		output_array = np.memmap(self._file+".npy", dtype=self._dtype, mode='w+', shape=entire_file.shape)
+		output_array = np.memmap(self._file+".su", dtype=self._dtype, mode='w+', shape=entire_file.shape)
 		#convert the data from ibm2ieee 
 		output_array['trace'] = self.ibm2ieee(entire_file['trace'])
 		# Assign the rest of the fields
