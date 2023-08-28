@@ -6,6 +6,7 @@ from .tools import pack_dtype, memory
 from .headers import segy_binary_header, segy_trace_header
 from numpy.lib.format import open_memmap
 import dask, dask.array as da
+from ibm2ieee import ibm2float32
 
 
 class Segy(object):
@@ -98,35 +99,24 @@ class Segy(object):
 
 	def read(self, overwrite=0):
 		'''
-		reads a Segy file to a .npy file in chunks. assumed IBM floats for now. extend for all data types
+		reads a Segy file to a .npy file using dask. assumed IBM floats for now. extend for all data types
 		
 		'''
-		self.calculateChunks()
-		self.in_dtype = pack_dtype(values=segy_trace_header + [('trace', ('i4', self.params['ns']), 240)])
-		self._dtype = pack_dtype(values=segy_trace_header + [('trace', (np.float32, self.params['ns']), 240)])
-		self.outdata = np.memmap(filename=self._file+".npy", dtype=self._dtype, mode='w+', shape=self.params["ntraces"], order="F")
-		
-		nchunks = self.params["nchunks"]
-		ntperchunk = self.params["ntperchunk"]
-		remainder = self.params["remainder"]
-		
-		for i in range(nchunks):
-			start_trace = i * ntperchunk
-			end_trace = start_trace + ntperchunk
-			chunk = np.fromfile(self._file, dtype=self.in_dtype, count=ntperchunk, offset=3600+(start_trace*self.params["tracesize"]))
-			self.outdata[start_trace:end_trace] = chunk
-
 	
-		# process the remaining traces
-		if remainder > 0:
-			start_trace = nchunks * ntperchunk
-			chunk = np.fromfile(self._file, dtype=self.in_dtype, count=remainder, offset=3600+(start_trace*self.params["tracesize"]))
-			self.outdata[start_trace:] = chunk
+		self.in_dtype = pack_dtype(values=segy_trace_header + [('trace', ('>i4', self.params['ns']), 240)])
+		self._dtype = pack_dtype(values=segy_trace_header + [('trace', (np.float32, self.params['ns']), 240)])
 		
-		self.outdata.flush()
-		self.outdata['trace'] = self.ibm2ieee(self.outdata['trace'].astype('i4'))
+		# Load the entire file lazily using Dask (with appropriate chunking)
+		# Instead of manually looping and chunking, we let Dask handle it
+		entire_file = da.from_array(np.memmap(filename=self._file, dtype=self.in_dtype, mode='r', offset=3600), chunks='auto')
+		output_array = np.memmap(self._file+".npy", dtype=self._dtype, mode='w+', shape=entire_file.shape)
+		output_array['trace'] = self.ibm2ieee(entire_file['trace'])
+		# Assign the rest of the fields
+		for field in self._dtype.names:
+			if field != 'trace':
+				output_array[field] = entire_file[field]
+		output_array.flush()
 
-		return self.outdata
 
 	def write(self, _infile, _outfile):
 		"""
@@ -144,7 +134,17 @@ class Segy(object):
 			for trace in data:
 				segyfile.write(trace.tobytes())
 
+	def ibm2ieee_dask(self, ibm):
+		sign = da.bitwise_and(da.right_shift(ibm, 31), 0x01)
+		exponent = da.bitwise_and(da.right_shift(ibm, 24), 0x7f)
+		mantissa = da.bitwise_and(ibm, 0x00ffffff)
+		
+		mantissa = mantissa.astype(np.float32) / pow(2.0, 24.0)
+		ieee = (1.0 - 2.0 * sign) * mantissa * da.power(np.float32(16.0), exponent.astype(np.float32) - 64.0)
+		return ieee
+
 	def ibm2ieee(self, ibm):
+		ibm = ibm.astype(np.int32)
 		sign = ibm >> 31 & 0x01
 		exponent = (ibm >> 24 & 0x7f)
 		mantissa = (ibm & 0x00ffffff)
@@ -178,6 +178,22 @@ class Segy(object):
 		ibm_mantissa = np.where(ieee, ibm_mantissa, 0)
 		expbits = np.where(ieee, expbits, 0)
 		return signbit | expbits | ibm_mantissa
+	
+	def ieee2ibm_dask(self, ieee):
+		ieee = ieee.astype(np.float32)
+		asint = ieee.view('i4')
+		signbit = da.bitwise_and(asint, 0x80000000)
+		exponent = da.right_shift(da.bitwise_and(asint, 0x7f800000), 23) - 127
+		exp16 = ((exponent+1) // 4).astype(np.int32)
+		exp_remainder = ((exponent+1) % 4).astype(np.int32)
+		exp16 += exp_remainder != 0
+		downshift = da.where(exp_remainder, 4-exp_remainder, 0)
+		ibm_exponent = da.clip(exp16 + 64, 0, 127)
+		expbits = da.left_shift(ibm_exponent, 24)
+		ibm_mantissa = da.right_shift(da.bitwise_or(da.bitwise_and(asint, 0x7fffff), 0x800000), downshift)
+		ibm_mantissa = da.where(ieee, ibm_mantissa, 0)
+		expbits = da.where(ieee, expbits, 0)
+		return da.bitwise_or(signbit, da.bitwise_or(expbits, ibm_mantissa))
 
 
 	def log(self, message):
