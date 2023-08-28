@@ -23,6 +23,7 @@ class Segy(object):
 		self.readNS()
 		self.report()
 
+
 	
 	def readEBCDIC(self):
 		''''function to read EBCDIC header'''
@@ -73,6 +74,7 @@ class Segy(object):
 	def readNS(self):
 		'''to do: add asserts'''
 		ns = self.params["ns"] = self.params['bheader']['hns']
+		self._dtype = pack_dtype(values=segy_trace_header + [('trace', (np.float32, self.params['ns']), 240)])
 		
 	def calculateChunks(self, fraction=2, offset=3600):	
 		'''
@@ -104,17 +106,18 @@ class Segy(object):
 		'''
 	
 		self.in_dtype = pack_dtype(values=segy_trace_header + [('trace', ('>i4', self.params['ns']), 240)])
-		self._dtype = pack_dtype(values=segy_trace_header + [('trace', (np.float32, self.params['ns']), 240)])
-		
+
 		# Load the entire file lazily using Dask (with appropriate chunking)
-		# Instead of manually looping and chunking, we let Dask handle it
 		entire_file = da.from_array(np.memmap(filename=self._file, dtype=self.in_dtype, mode='r', offset=3600), chunks='auto')
+		#memmap an empty copy on disk
 		output_array = np.memmap(self._file+".npy", dtype=self._dtype, mode='w+', shape=entire_file.shape)
+		#convert the data from ibm2ieee 
 		output_array['trace'] = self.ibm2ieee(entire_file['trace'])
 		# Assign the rest of the fields
 		for field in self._dtype.names:
 			if field != 'trace':
 				output_array[field] = entire_file[field]
+		#flush it to disk
 		output_array.flush()
 
 
