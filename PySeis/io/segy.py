@@ -96,10 +96,7 @@ class Segy(object):
 			assert filesize%tracesize == 0
 			assert chunksize%tracesize == 0
 
-	def report(self):
-		if self.verbose: pprint.pprint(self.params)
-		
-		
+
 	def read(self, overwrite=0):
 		'''
 		reads a Segy file to a .npy file in chunks. assumed IBM floats for now. extend for all data types
@@ -184,8 +181,9 @@ class Segy(object):
 		return signbit | expbits | ibm_mantissa
 
 
-
-
 	def log(self, message):
 		if self.verbose: print(message)
 
+	def report(self):
+		if self.verbose: pprint.pprint(self.params)
+		
