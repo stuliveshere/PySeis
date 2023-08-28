@@ -79,6 +79,7 @@ class Segy(object):
 		fraction: fraction of ram per chunk
 		'''
 		mem = memory()['free']
+		print("free ram:", mem)
 		with open(self._file, 'rb') as f:
 			f.seek(0, os.SEEK_END)
 			self.params["filesize"] = filesize = f.tell()-offset #filesize in bytes, minus headers
@@ -90,6 +91,9 @@ class Segy(object):
 			self.params["remainder"] = remainder = filesize - chunksize*nchunks
 			assert filesize%tracesize == 0
 			assert chunksize%tracesize == 0
+		for item in ["filesize", "tracesize", "ntraces", "nchunks", "chunksize", "ntperchunk", "remainder"]:
+			if self.verbose:
+				print(item, ": ", self.params[item])
 
 
 	def read(self, overwrite=0):
