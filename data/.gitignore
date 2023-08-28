@@ -2,3 +2,5 @@
 Line*.*
 *.tgz
 *.npy
+binary
+header
