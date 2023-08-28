@@ -230,8 +230,8 @@ def main():
     a = Controller(root,orient=tk.HORIZONTAL)
     a.pack(side="top", fill="both", expand=True)
     root.geometry("1366x768")
-    print 'functions in current module:\n', list_functions(sys.modules[__name__])
-    print 'functions in inspect module:\n', list_functions(inspect)
+    print( 'functions in current module:\n', list_functions(sys.modules[__name__]))
+    print( 'functions in inspect module:\n', list_functions(inspect))
     root.mainloop()
     
 if __name__ == "__main__":
