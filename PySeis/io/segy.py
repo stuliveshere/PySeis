@@ -44,17 +44,12 @@ class Segy(object):
 			f.seek(3200)
 			bheader = np.fromfile(f, dtype=_dtype, count=1)
 			self.bheader = bheader
-		with open(self._file, 'rb') as f:
-			f.seek(3200)
-			bheader = np.fromfile(f, dtype=_dtype, count=1)
-			self.bheader = bheader
-			#endian sanity checks. this is pretty crude and will need revisting.
 		self.params['bheader'] = {}
 		for name in bheader.dtype.names:
 			try:
 				self.params['bheader'][name] = bheader[name][-1]
 			except UnicodeDecodeError:
-				pass
+				pass #update this to not fail silently
 
 	def writeBheader(self, outfile, bheader=None):
 		'''function to write binary header
