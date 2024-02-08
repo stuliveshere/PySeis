@@ -10,6 +10,7 @@
 import numpy as np, sys, os
 import mmap
 from .headers import su_trace_header
+from .tools import pack_dtype
 import pprint
 
 	
@@ -20,74 +21,33 @@ class SU(object):
 	'''
 	def __init__(self, _file):
 		self.params = {}
-		self.params['byteswap'] = False
 		self._file = self.params['filename'] = _file
 		self.readNS()
-		self.calculateChunks()
 		self.report()
 
 	def readNS(self):
-		raw = open(self._file, 'rb').read(240)
-		self.ns = ns1 = np.fromstring(raw, dtype=su_header_dtype, count=1)['ns'][0]
-		ns2 = np.fromstring(raw, dtype=su_header_dtype, count=1).byteswap()['ns'][0]
-		if ns2 < ns1:
-			self.params['byteswap'] = True
-			self.ns = ns2
+		header_dtype =  pack_dtype(values=su_trace_header)
+		header = np.fromfile(self._file, dtype=header_dtype, count=1)
+		self.ns = header['ns'][0]
 		self.params["ns"] = self.ns
-		self._dtype = pack_dtype(values=su_trace_header + [('trace', ('<f4', ns), 240)])
+		self._dtype = pack_dtype(values=su_trace_header + [('trace', (np.float32, self.ns), 240)])
 		
-	def calculateChunks(self, fraction=2):	
-		'''
-		calculates chunk sizes for SU files that are larger than RAM
-		'''
-		mem = memory()['free']
-		with open(self._file, 'rb') as f:
-			f.seek(0, os.SEEK_END)
-			self.params["filesize"] = filesize = f.tell() #filesize in bytes
-			self.params["tracesize"] = tracesize = 240+self.ns*4.0
-			self.params["ntraces"] = int(filesize/tracesize)
-			self.params["nchunks"] = nchunks = int(np.ceil(filesize/(mem*fraction))) #number of chunks
-			self.params["chunksize"] = chunksize = int((filesize/nchunks) - (filesize/nchunks)%tracesize)
-			self.params["ntperchunk"] = int(chunksize/tracesize)
-			self.params["remainder"] = filesize - chunksize*nchunks
-
-
 	def report(self):		
 		pprint.pprint(self.params)
 		
-		
-	def read(self, _file):
+	def read(self):
 		'''
 		reads a SU file to a .npy file
 		'''
-		assert self.params['filesize']%self.params['tracesize'] == 0.0
-		assert self.params['chunksize']%self.params['tracesize'] == 0.0
-		self.outdata = np.memmap(_file, mode='w+', dtype=self._dtype, shape=self.params["ntraces"])
-		with open(self._file, 'rb') as f:
-			f.seek(0)
-			for i in range(self.params["nchunks"]):
-				start = int(i*self.params["ntperchunk"])
-				end = int((i+1)*self.params["ntperchunk"])
-				if self.params['byteswap']: self.outdata[start:end] = np.fromstring(f.read(self.params["chunksize"]).byteswap(), dtype=self._dtype)
-				else: self.outdata[start:end] = np.fromstring(f.read(self.params["chunksize"]), dtype=self._dtype)
-				self.outdata.flush()
-			
-			if self.params['byteswap']: self.outdata[end:] = np.fromstring(f.read(self.params["remainder"]).byteswap(), dtype=self._dtype)
-			else: self.outdata[end:] = np.fromstring(f.read(self.params["remainder"]), dtype=self._dtype)
-
-			self.outdata.flush()
+		self.gathers= np.memmap(self._file, dtype=self._dtype, mode='r+')
 	
-	def write(self, _infile, _outfile):
+	def write(self, _inline,_outfile):
 		'''
 		writes a .npy file to a SU file
 		'''
 		npyFile = np.memmap(_infile, dtype=self._dtype, mode='r')
-		npyFile.tofile(_outfile)
 
-if __name__ == "__main__":
-	A = SU("../../data/big.su")
-	#A.read("../../data/test.npy")
-	#A.write("../../data/test.npy", "../../data/check.su")
+
 	
 	
 
