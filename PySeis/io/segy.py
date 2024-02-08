@@ -126,7 +126,7 @@ class Segy(object):
 		"""
 		# Load .npy file
 		self.out_dtype = pack_dtype(values=segy_trace_header + [('trace', ('>f4', self.params['ns']), 240)])
-		data = np.memmap(filename=_infile, dtype=self.out_dtype, mode='r+', order="F")
+		data = np.memmap(filename=_infile, dtype=self.out_dtype, mode='r+')
 		# Convert IEEE floats back to IBM floats
 		# data['trace'] = self.ieee2ibm(data['trace'].astype('<i4'))
 		self.writeEBCDIC(_outfile)
