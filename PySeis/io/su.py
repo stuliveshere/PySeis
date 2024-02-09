@@ -1,16 +1,13 @@
 # Standard library imports
 from dataclasses import dataclass, field
-import os
 from pprint import pprint
 
 # Third-party library imports
 import numpy as np
-import yaml
 from typing import List, Dict, Any
-import hexdump
 
 # Local application/library specific imports
-from .models import create_block_dataclass
+from .models import SeisFile, create_block_dataclass
 
 class SU(SeisFile):
     """
@@ -30,5 +27,7 @@ class SU(SeisFile):
         #  and data block definitions for all defined blocks
         self.block_definitions = {}
         self.block_class = {}
-        self.load_header_definitions()
+        self.load_header_definitions(["su.yaml"])
 
+if __name__ == "__main__":
+    su = SU()

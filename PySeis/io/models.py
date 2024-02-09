@@ -1,4 +1,3 @@
-# methods.py
 
 from dataclasses import dataclass, field
 from typing import List, Dict, Any
@@ -119,11 +118,9 @@ class SeisFile:
         A generic method which loads header definitions
         from yaml files
         """
-        yaml_path = os.path.join(os.getcwd(), self.definition_paths)
-        for yml_file in os.listdir(yaml_path):
-            if "yml" in yml_file or "yaml" in yml_file:
-                with open(os.path.join(yaml_path, yml_file), 'r') as f:
-                    self.block_definitions.update(yaml.safe_load(f))
+        for yml_file in yml_files:
+            with open(yml_file, 'r') as f:
+                self.block_definitions.update(yaml.safe_load(f))
         
         for key in self.block_definitions:
             self.block_class[key] = create_block_dataclass(self.block_definitions[key])
