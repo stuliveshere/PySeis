@@ -19,4 +19,4 @@ My current goals are:
 Dependencies
 ==========
 
-As the data is now stored as classes it naturally calls to dataclasses. This inevitably means we're up in the high 3s by now for compatibility. 
+As the data is now stored as classes it naturally calls to dataclasses. This means we're python 3.7+ now.
