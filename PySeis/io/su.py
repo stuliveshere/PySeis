@@ -1,6 +1,7 @@
 # Standard library imports
 from dataclasses import dataclass, field
 from pprint import pprint
+import os
 
 # Third-party library imports
 import numpy as np
@@ -27,7 +28,10 @@ class SU(SeisFile):
         #  and data block definitions for all defined blocks
         self.block_definitions = {}
         self.block_class = {}
-        self.load_header_definitions(["su.yaml"])
+        #absolute path the yaml file.
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        yaml_file = os.path.join(current_dir, 'su.yaml')
+        self.load_header_definitions([yaml_file])
 
 if __name__ == "__main__":
     su = SU()
