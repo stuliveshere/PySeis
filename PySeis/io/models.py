@@ -114,7 +114,7 @@ class SeisFile:
         return np.memmap(filename, dtype='uint8', mode='r')
 
 
-    def load_header_definitions(self):
+    def load_header_definitions(self, yml_files):
         """
         A generic method which loads header definitions
         from yaml files
