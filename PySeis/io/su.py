@@ -15,23 +15,17 @@ class SU(SeisFile):
     Base class for initializing SU files
     """
 
-    def __init__(self):
+    def __init__(self, path=None):
         super().__init__()
         #this loads the header dictionaries
         self.initialize()
-        
-        self.channel_sets = [] # A channel set is a list of records
-        self.general_headers = []  # segds have general headers
+        self.path = path
+        if path:
+            open(self.path)
+ 
 
-    def initialize(self):
-        # self.block_descriptions is a dictionary which will contain the header
-        #  and data block definitions for all defined blocks
-        self.block_definitions = {}
-        self.block_class = {}
-        #absolute path the yaml file.
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        yaml_file = os.path.join(current_dir, 'su.yaml')
-        self.load_header_definitions([yaml_file])
+    def open(self, path):
+        pass
 
 if __name__ == "__main__":
     su = SU()
