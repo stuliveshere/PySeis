@@ -1,206 +1,165 @@
-import numpy as np
-import os, sys
-import pprint
-#overwrite these header definitions for custom headers
-from .tools import pack_dtype, memory
-from .headers import segy_binary_header, segy_trace_header
-from numpy.lib.format import open_memmap
-import dask, dask.array as da
-from ibm2ieee import ibm2float32
+import sys
+import os
+# Add the project root to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+from construct import *
+from pyseis.io.tools import ibm2ieee, ieee2ibm  # Now use absolute import
 
-class Segy(object):
-	'''
-	reading and writing segy files, including those larger than RAM,
-	to and from .npy files
-	'''
-	def __init__(self, _file, verbose=0):
-		self.params = {}
-		self.verbose = verbose
-		self._file = self.params['filename'] = _file
-		self.readEBCDIC()
-		self.readBheader()
-		self.readNS()
-		self.report()
+class IBMFloatAdapter(Adapter):
+    def _decode(self, obj, context, path):
+        return ibm2ieee(obj)
+    
+    def _encode(self, obj, context, path):
+        return ieee2ibm(obj)
 
+# Add EBCDIC to ASCII conversion adapter
+class EBCDICAdapter(Adapter):
+    def _decode(self, obj, context, path):
+        # Convert EBCDIC to ASCII
+        try:
+            return obj.decode('cp037')  # cp037 is the EBCDIC code page
+        except:
+            return obj
+    
+    def _encode(self, obj, context, path):
+        # Convert ASCII to EBCDIC if needed
+        try:
+            return obj.encode('cp037')
+        except:
+            return obj
 
-	
-	def readEBCDIC(self):
-		''''function to read EBCDIC header'''
-		with open(file=self._file, mode="rt", encoding="cp500") as f:
-			f.seek(0)
-			self.params["EBCDIC"] = f.read(3200)
-
-	def writeEBCDIC(self, outfile, text=None):
-		'''function to write EBCDIC header'''
-		if text == None: text = self.params["EBCDIC"]
-		if len(text) != 3200:
-			raise ValueError("Text must be exactly 3200 characters long")
-		with open(file=outfile, mode="wt", encoding="cp500") as f:
-			f.write(text)
-
-	def readBheader(self):
-		'''function to read binary header'''
-		_dtype=pack_dtype(values=segy_binary_header)
-		with open(self._file, 'rb') as f:
-			f.seek(3200)
-			bheader = np.fromfile(f, dtype=_dtype, count=1)
-			self.bheader = bheader
-		self.params['bheader'] = {}
-		for name in bheader.dtype.names:
-			try:
-				self.params['bheader'][name] = bheader[name][-1]
-			except UnicodeDecodeError:
-				pass #update this to not fail silently
-
-	def writeBheader(self, outfile, bheader=None):
-		'''function to write binary header
-		   helper functions should be written 
-		   which will update bheader based upon 
-		   self.bheader'''
-		
-		if bheader == None: bheader = self.bheader
-		_dtype=pack_dtype(values=segy_binary_header)
-		
-		# Ensure the dtype is big endian
-		_dtype = _dtype.newbyteorder('>')
-		bheader = bheader.astype(_dtype)
-
-		with open(outfile, 'r+b') as f:  # 'r+b' to read and write in binary mode
-			f.seek(3200)  # move to the start of the binary header
-			bheader.tofile(f)
-
-
-	def readNS(self):
-		'''to do: add asserts'''
-		ns = self.params["ns"] = self.params['bheader']['hns']
-		self._dtype = pack_dtype(values=segy_trace_header + [('trace', (np.float32, self.params['ns']), 240)])
-		
-	def calculateChunks(self, fraction=2, offset=3600):	
-		'''
-		calculates chunk sizes for Segy files that are larger than RAM
-		fraction: fraction of ram per chunk
-		'''
-		mem = memory()['free']
-		print("free ram:", mem)
-		with open(self._file, 'rb') as f:
-			f.seek(0, os.SEEK_END)
-			self.params["filesize"] = filesize = f.tell()-offset #filesize in bytes, minus headers
-			self.params["tracesize"] = tracesize = 240+(self.params["ns"]*4)
-			self.params["ntraces"] = ntraces = int(filesize/tracesize)
-			self.params["nchunks"] = nchunks = int(np.ceil(filesize/(mem*fraction))) #number of chunks
-			self.params["chunksize"] = chunksize = int((filesize/nchunks) - (filesize/nchunks)%tracesize)
-			self.params["ntperchunk"] = int(chunksize/tracesize)
-			self.params["remainder"] = remainder = filesize - chunksize*nchunks
-			assert filesize%tracesize == 0
-			assert chunksize%tracesize == 0
-		for item in ["filesize", "tracesize", "ntraces", "nchunks", "chunksize", "ntperchunk", "remainder"]:
-			if self.verbose:
-				print(item, ": ", self.params[item])
-
-
-	def read(self, overwrite=0):
-		'''
-		reads a Segy file to a .npy file using dask. assumed IBM floats for now. extend for all data types
-		
-		'''
-		#temporary dtype to preserve the byte order before ibm2ieee conversion
-		self.in_dtype = pack_dtype(values=segy_trace_header + [('trace', ('>i4', self.params['ns']), 240)])
-		# Load the entire file lazily using Dask (with appropriate chunking)
-		entire_file = da.from_array(np.memmap(filename=self._file, dtype=self.in_dtype, mode='r', offset=3600), chunks='auto')
-		#memmap an empty copy on disk
-		output_array = np.memmap(self._file+".su", dtype=self._dtype, mode='w+', shape=entire_file.shape)
-		#convert the data from ibm2ieee 
-		output_array['trace'] = self.ibm2ieee(entire_file['trace'])
-		# Assign the rest of the fields
-		for field in self._dtype.names:
-			if field != 'trace':
-				output_array[field] = entire_file[field]
-		#flush it to disk
-		output_array.flush()
-
-
-	def write(self, _infile, _outfile):
-		"""
-		Writes a Segy file from a .npy file.
-		"""
-		# Load .npy file
-		self.out_dtype = pack_dtype(values=segy_trace_header + [('trace', ('>f4', self.params['ns']), 240)])
-		data = np.memmap(filename=_infile, dtype=self.out_dtype, mode='r+')
-		# Convert IEEE floats back to IBM floats
-		# data['trace'] = self.ieee2ibm(data['trace'].astype('<i4'))
-		self.writeEBCDIC(_outfile)
-		self.writeBheader(_outfile)
-
-		with open(_outfile, 'r+b') as segyfile:
-			for trace in data:
-				segyfile.write(trace.tobytes())
-
-	def ibm2ieee_dask(self, ibm):
-		sign = da.bitwise_and(da.right_shift(ibm, 31), 0x01)
-		exponent = da.bitwise_and(da.right_shift(ibm, 24), 0x7f)
-		mantissa = da.bitwise_and(ibm, 0x00ffffff)
-		
-		mantissa = mantissa.astype(np.float32) / pow(2.0, 24.0)
-		ieee = (1.0 - 2.0 * sign) * mantissa * da.power(np.float32(16.0), exponent.astype(np.float32) - 64.0)
-		return ieee
-
-	def ibm2ieee(self, ibm):
-		ibm = ibm.astype(np.int32)
-		sign = ibm >> 31 & 0x01
-		exponent = (ibm >> 24 & 0x7f)
-		mantissa = (ibm & 0x00ffffff)
-		mantissa = (mantissa * np.float32(1.0)) / pow(2.0, 24.0)
-		ieee = (1.0 - 2.0 * sign) * mantissa * np.power(np.float32(16.0), exponent - 64.0)
-		return ieee
-
-	def ieee2ibm(self, ieee):
-		ieee = ieee.astype(np.float32)
-		expmask = 0x7f800000
-		signmask = 0x80000000
-		mantmask = 0x7fffff
-		asint = ieee.view('i4')
-		signbit = asint & signmask
-		exponent = ((asint & expmask) >> 23) - 127
-		# The IBM 7-bit exponent is to the base 16 and the mantissa is presumed to
-		# be entirely to the right of the radix point. In contrast, the IEEE
-		# exponent is to the base 2 and there is an assumed 1-bit to the left of the
-		# radix point.
-		exp16 = ((exponent+1) // 4)
-		exp_remainder = (exponent+1) % 4
-		exp16 += exp_remainder != 0
-		downshift = np.where(exp_remainder, 4-exp_remainder, 0)
-		ibm_exponent = np.clip(exp16 + 64, 0, 127)
-		expbits = ibm_exponent << 24
-		# Add the implicit initial 1-bit to the 23-bit IEEE mantissa to get the
-		# 24-bit IBM mantissa. Downshift it by the remainder from the exponent's
-		# division by 4. It is allowed to have up to 3 leading 0s.
-		ibm_mantissa = ((asint & mantmask) | 0x800000) >> downshift
-		# Special-case 0.0
-		ibm_mantissa = np.where(ieee, ibm_mantissa, 0)
-		expbits = np.where(ieee, expbits, 0)
-		return signbit | expbits | ibm_mantissa
-	
-	def ieee2ibm_dask(self, ieee):
-		ieee = ieee.astype(np.float32)
-		asint = ieee.view('i4')
-		signbit = da.bitwise_and(asint, 0x80000000)
-		exponent = da.right_shift(da.bitwise_and(asint, 0x7f800000), 23) - 127
-		exp16 = ((exponent+1) // 4).astype(np.int32)
-		exp_remainder = ((exponent+1) % 4).astype(np.int32)
-		exp16 += exp_remainder != 0
-		downshift = da.where(exp_remainder, 4-exp_remainder, 0)
-		ibm_exponent = da.clip(exp16 + 64, 0, 127)
-		expbits = da.left_shift(ibm_exponent, 24)
-		ibm_mantissa = da.right_shift(da.bitwise_or(da.bitwise_and(asint, 0x7fffff), 0x800000), downshift)
-		ibm_mantissa = da.where(ieee, ibm_mantissa, 0)
-		expbits = da.where(ieee, expbits, 0)
-		return da.bitwise_or(signbit, da.bitwise_or(expbits, ibm_mantissa))
-
-
-	def log(self, message):
-		if self.verbose: print(message)
-
-	def report(self):
-		if self.verbose: pprint.pprint(self.params)
-		
+# SEGY format definition
+segy_format = Struct(
+    # Textual header: 3200 bytes (EBCDIC)
+    "EBCDIC" / EBCDICAdapter(Bytes(3200)),
+    
+    # Binary header: 400 bytes
+    "binary_header" / Struct(
+        "job_id" / Int32ub,
+        "line_number" / Int32ub,
+        "reel_number" / Int32ub,
+        "number_of_data_traces_per_ensemble" / Int16ub,
+        "number_of_auxiliary_traces_per_ensemble" / Int16ub,
+        "sample_interval" / Int16ub,
+        "sample_interval_original" / Int16ub,
+        "number_of_samples_per_trace" / Int16ub,
+        "number_of_samples_original" / Int16ub,
+        "data_sample_format_code" / Int16ub,
+        "ensemble_fold" / Int16ub,
+        "trace_sorting_code" / Int16ub,
+        "vertical_sum_code" / Int16ub,
+        "sweep_frequency_start" / Int16ub,
+        "sweep_frequency_end" / Int16ub,
+        "sweep_length" / Int16ub,
+        "sweep_type_code" / Int16ub,
+        "trace_number_of_sweep_channel" / Int16ub,
+        "sweep_trace_taper_length_start" / Int16ub,
+        "sweep_trace_taper_length_end" / Int16ub,
+        "taper_type" / Int16ub,
+        "correlated_traces" / Int16ub,
+        "binary_gain_recovered" / Int16ub,
+        "amplitude_recovery_method" / Int16ub,
+        "measurement_system" / Int16ub,
+        "impulse_signal_polarity" / Int16ub,
+        "vibratory_polarity_code" / Int16ub,
+        "unassigned" / Bytes(170)  # Remaining bytes for custom data
+    ),
+    
+    # Trace headers and trace data
+    "traces" / GreedyRange(
+        Struct(
+            # Trace header: 240 bytes
+            "trace_header" / Struct(
+                "trace_sequence_number_within_line" / Int32ub,
+                "trace_sequence_number_within_file" / Int32ub,
+                "original_field_record_number" / Int32ub,
+                "trace_number_within_field_record" / Int32ub,
+                "energy_source_point" / Int32ub,
+                "ensemble_number" / Int32ub,
+                "trace_number_within_ensemble" / Int32ub,
+                "trace_identification_code" / Int16ub,
+                "number_of_vertically_summed_traces" / Int16ub,
+                "number_of_horizontally_stacked_traces" / Int16ub,
+                "data_use" / Int16ub,
+                "source_receiver_offset" / Int32ub,
+                "receiver_group_elevation" / Int32ub,
+                "surface_elevation_at_source" / Int32ub,
+                "source_depth_below_surface" / Int32ub,
+                "datum_elevation_at_receiver_group" / Int32ub,
+                "datum_elevation_at_source" / Int32ub,
+                "water_depth_at_source" / Int32ub,
+                "water_depth_at_receiver_group" / Int32ub,
+                "scalar_for_elevations" / Int16sb,
+                "scalar_for_coordinates" / Int16sb,
+                "source_coordinate_x" / Int32ub,
+                "source_coordinate_y" / Int32ub,
+                "group_coordinate_x" / Int32ub,
+                "group_coordinate_y" / Int32ub,
+                "coordinate_units" / Int16ub,
+                "weathering_velocity" / Int16ub,
+                "subweathering_velocity" / Int16ub,
+                "uphole_time_at_source" / Int16ub,
+                "uphole_time_at_group" / Int16ub,
+                "source_static_correction" / Int16sb,
+                "group_static_correction" / Int16sb,
+                "total_static_applied" / Int16sb,
+                "lag_time_A" / Int16sb,
+                "lag_time_B" / Int16sb,
+                "delay_recording_time" / Int16sb,
+                "mute_time_start" / Int16ub,
+                "mute_time_end" / Int16ub,
+                # The number of samples in this trace
+                "number_of_samples_in_this_trace" / Int16ub,
+                "sample_interval_in_this_trace" / Int16ub,
+                # ... Additional fields can be added here ...
+                "unassigned" / Bytes(120)  # Remaining bytes to complete 240 bytes
+            ),
+            # Trace data with conditional format
+            "data" / Switch(
+                this.trace_header.data_sample_format_code,
+                {
+                    1: Array(this.trace_header.number_of_samples_in_this_trace, 
+                            IBMFloatAdapter(Int32ub)),  # IBM float
+                    2: Array(this.trace_header.number_of_samples_in_this_trace, 
+                            Int32sb),  # 4-byte integer
+                    3: Array(this.trace_header.number_of_samples_in_this_trace, 
+                            Int16sb),  # 2-byte integer
+                    4: Array(this.trace_header.number_of_samples_in_this_trace, 
+                            Int8sb),   # 4-bit integer
+                    5: Array(this.trace_header.number_of_samples_in_this_trace, 
+                            Float32b), # IEEE float
+                    8: Array(this.trace_header.number_of_samples_in_this_trace, 
+                            Int8sb),   # 1-byte integer
+                },
+                default=Array(this.trace_header.number_of_samples_in_this_trace, 
+                            Float32b)  # Default to IEEE float
+            )
+        )
+    )
+)
+if __name__ == "__main__":
+    segy_data = open('../../data/Line_001.sgy', 'rb').read()
+    parsed_data = segy_format.parse(segy_data)
+    print("EBCDIC Header:")
+    print(parsed_data['EBCDIC'])
+    print("\nBinary Header:")
+    print(parsed_data['binary_header'])
+    
+    # Add debug info
+    print("\nFile size:", len(segy_data))
+    print("Number of traces found:", len(parsed_data['traces']))
+    
+    # Calculate expected size
+    binary_header = parsed_data['binary_header']
+    samples_per_trace = binary_header.number_of_samples_per_trace
+    bytes_per_sample = 4  # assuming 4 bytes for IBM float
+    expected_trace_size = 240 + (samples_per_trace * bytes_per_sample)  # 240 for trace header
+    expected_total_size = 3600 + (expected_trace_size * binary_header.number_of_data_traces_per_ensemble)
+    print("\nExpected file size:", expected_total_size)
+    print("Samples per trace:", samples_per_trace)
+    print("Expected trace size:", expected_trace_size)
+    
+    if len(parsed_data['traces']) > 0:
+        print("\nFirst trace header:")
+        print(parsed_data['traces'][0]['trace_header'])

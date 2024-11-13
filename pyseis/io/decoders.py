@@ -1,200 +1,221 @@
+from dataclasses import dataclass
+from enum import Enum
+from typing import Protocol, Any, Dict
 import struct
-import numpy as np
 import codecs
 
-def get_int(blob, start_byte, num_bytes):
-    # Extract whole number of bytes
-    start = int(np.floor(start_byte))
-    end = int(np.ceil(start_byte + num_bytes))
-    packet = bytearray(blob[start:end])
-    
-    # If the field starts from the second nibble
-    if start_byte % 1 != 0:
-        packet[0] &= 0x0F  # Set the first nibble to zero
+class FormatType(Enum):
+    BCD = "bcd"
+    UINT = "uint"
+    INT = "int"
+    STRING = "string"
+    FLOAT32 = "float32"
+    FLOAT64 = "float64"
+    EBCDIC = "ebcdic"
+    FORMAT_8036 = "8036"
 
-    # If the field ends at the first nibble
-    if (start_byte + num_bytes) % 1 != 0:
-        packet[-1] >>= 4  # Right-shift the last byte by 4 bits
+class DecoderProtocol(Protocol):
+    def get(self, blob: bytes, start_byte: float, num_bytes: float) -> Any: ...
+    def set(self, blob: bytes, start_byte: float, num_bytes: float, value: Any) -> bytes: ...
 
-    return int.from_bytes(packet, 'big', signed=True)
+@dataclass
+class BinaryDecoder:
+    """Base class for decoders."""
 
-def set_int(blob, start_byte, num_bytes, value):
-    packed_value = value.to_bytes(int(np.ceil(num_bytes)), 'big', signed=True)
-    
-    # If fractional bytes are involved, handle them
-    if num_bytes % 1 != 0:
-        if start_byte % 1 == 0.5:  # If starting from the middle of a byte
-            packed_value = (blob[int(start_byte)] & 0xF0) | (packed_value[0] & 0x0F)
+@dataclass
+class IntDecoder(BinaryDecoder):
+    signed: bool = True
+
+    def get(self, blob: bytes, start_byte: float, num_bytes: float) -> int:
+        start = int(start_byte)
+        end = start + int(num_bytes)
+        data = blob[start:end]
+
+        fmt = {1: 'b', 2: 'h', 4: 'i', 8: 'q'}.get(int(num_bytes))
+        if fmt is None:
+            return int.from_bytes(data, byteorder='big', signed=self.signed)
+        if not self.signed:
+            fmt = fmt.upper()
+        fmt = '>' + fmt  # Big-endian
+        return struct.unpack(fmt, data)[0]
+
+    def set(self, blob: bytes, start_byte: float, num_bytes: float, value: int) -> bytes:
+        start = int(start_byte)
+        end = start + int(num_bytes)
+
+        fmt = {1: 'b', 2: 'h', 4: 'i', 8: 'q'}.get(int(num_bytes))
+        if fmt is None:
+            data = value.to_bytes(int(num_bytes), byteorder='big', signed=self.signed)
         else:
-            packed_value = (packed_value[0] & 0xF0) | (blob[int(start_byte + num_bytes - 0.5)] & 0x0F)
-    
-    return blob[:int(start_byte)] + packed_value + blob[int(start_byte + np.ceil(num_bytes)):]
+            if not self.signed:
+                fmt = fmt.upper()
+            fmt = '>' + fmt  # Big-endian
+            data = struct.pack(fmt, value)
 
-def get_uint(blob, start_byte, num_bytes):
-    # Extract whole number of bytes
-    start = int(np.floor(start_byte))
-    end = int(np.ceil(start_byte + num_bytes))
-    packet = bytearray(blob[start:end])
-    
-    # If the field starts from the second nibble
-    if start_byte % 1 != 0:
-        packet[0] &= 0x0F  # Set the first nibble to zero
+        return blob[:start] + data + blob[end:]
 
-    # If the field ends at the first nibble
-    if (start_byte + num_bytes) % 1 != 0:
-        packet[-1] >>= 4  # Right-shift the last byte by 4 bits
+@dataclass
+class StringDecoder(BinaryDecoder):
+    encoding: str = 'utf-8'
 
-    return int.from_bytes(packet, 'big', signed=False)
+    def get(self, blob: bytes, start_byte: float, num_bytes: float) -> str:
+        start = int(start_byte)
+        end = start + int(num_bytes)
+        data = blob[start:end]
+        return data.decode(self.encoding).rstrip('\x00')
 
-def set_uint(blob, start_byte, num_bytes, value):
-    packed_value = value.to_bytes(int(np.ceil(num_bytes)), 'big', signed=False)
-    
-    # If fractional bytes are involved, handle them
-    if num_bytes % 1 != 0:
-        if start_byte % 1 == 0.5:  # If starting from the middle of a byte
-            packed_value = (blob[int(start_byte)] & 0xF0) | (packed_value[0] & 0x0F)
+    def set(self, blob: bytes, start_byte: float, num_bytes: float, value: str) -> bytes:
+        encoded_value = value.encode(self.encoding)
+        if len(encoded_value) > num_bytes:
+            raise ValueError("String too long for the specified number of bytes.")
+        padded_value = encoded_value.ljust(int(num_bytes), b'\x00')
+        start = int(start_byte)
+        end = start + int(num_bytes)
+        return blob[:start] + padded_value + blob[end:]
+
+@dataclass
+class FloatDecoder(BinaryDecoder):
+    size: int  # 4 for float32, 8 for float64
+
+    def get(self, blob: bytes, start_byte: float, num_bytes: float) -> float:
+        start = int(start_byte)
+        data = blob[start:start + self.size]
+        if self.size == 4:
+            return struct.unpack('>f', data)[0]
+        elif self.size == 8:
+            return struct.unpack('>d', data)[0]
         else:
-            packed_value = (packed_value[0] & 0xF0) | (blob[int(start_byte + num_bytes - 0.5)] & 0x0F)
-    
-    return blob[:int(start_byte)] + packed_value + blob[int(start_byte + np.ceil(num_bytes)):]
+            raise ValueError("Unsupported float size.")
 
+    def set(self, blob: bytes, start_byte: float, num_bytes: float, value: float) -> bytes:
+        start = int(start_byte)
+        if self.size == 4:
+            data = struct.pack('>f', value)
+        elif self.size == 8:
+            data = struct.pack('>d', value)
+        else:
+            raise ValueError("Unsupported float size.")
+        end = start + self.size
+        return blob[:start] + data + blob[end:]
 
-def get_bcd(blob, start_byte, num_bytes):
-    start = np.floor(start_byte)
-    end = np.ceil(start + num_bytes)
-    data = blob[int(start):int(end)]
-    nibbles = [n for byte in data for n in [(byte & 0xF0) >> 4, byte & 0x0F]]
+@dataclass
+class EBCDICDecoder(BinaryDecoder):
+    def get(self, blob: bytes, start_byte: float, num_bytes: float) -> str:
+        start = int(start_byte)
+        end = start + int(num_bytes)
+        data = blob[start:end]
+        return codecs.decode(data, 'cp500').rstrip('\x00')
 
-    start_nibble = int(start_byte % 1 * 2)
-    num_nibbles = int(num_bytes * 2)
+    def set(self, blob: bytes, start_byte: float, num_bytes: float, value: str) -> bytes:
+        encoded_value = codecs.encode(value.ljust(int(num_bytes)), 'cp500')
+        start = int(start_byte)
+        end = start + int(num_bytes)
+        return blob[:start] + encoded_value[:int(num_bytes)] + blob[end:]
 
-    # Extract the relevant nibbles
-    relevant_nibbles = nibbles[start_nibble:start_nibble + num_nibbles]
+@dataclass
+class BCDDecoder(BinaryDecoder):
+    def get(self, blob: bytes, start_byte: float, num_bytes: float) -> int:
+        start_nibble = int(start_byte * 2)
+        num_nibbles = int(num_bytes * 2)
+        end_nibble = start_nibble + num_nibbles
 
-    if all(n == 0 for n in relevant_nibbles):
-        return 0
-    try:
-        return int(''.join(map(str, relevant_nibbles)))
-    except ValueError:
-        return -int(''.join(map(str, relevant_nibbles)), 16)
+        byte_start = start_nibble // 2
+        byte_end = (end_nibble + 1) // 2
+        data = blob[byte_start:byte_end]
 
-def set_bcd(blob, start_byte, num_bytes, value):
-    # Set up some variables
-    start = np.floor(start_byte)
-    end = np.ceil(start + num_bytes)
-    data = blob[int(start):int(end)]
-    nibbles = [n for byte in data for n in [(byte & 0xF0) >> 4, byte & 0x0F]]
-    start_nibble = int(start_byte % 1 * 2)
-    num_nibbles = int(num_bytes * 2)
+        digits = []
+        for i in range(start_nibble, end_nibble):
+            byte_index = (i - start_nibble) // 2
+            byte = data[byte_index]
+            if i % 2 == 0:
+                # High nibble
+                nibble = (byte >> 4) & 0x0F
+            else:
+                # Low nibble
+                nibble = byte & 0x0F
+            digits.append(str(nibble))
 
-    # Convert the value to a list of BCD nibbles
-    if value < 0:
-        bcd_str = format(-value, f'0{num_nibbles}X')  # Convert to hexadecimal string
-    else:
-        bcd_str = format(value, f'0{num_nibbles}d')  # Convert to decimal string
-    new_nibbles = [int(n) for n in bcd_str]
-    
-    # Replace the relevant nibbles
-    nibbles[start_nibble:start_nibble + num_nibbles] = new_nibbles
-    # Pack the nibbles back into bytes
-    
-    updated_bytes = [(nibbles[i] << 4) | nibbles[i + 1] for i in range(0, len(nibbles), 2)]
+        return int(''.join(digits))
 
-    # Replace the relevant bytes in the blob and return the updated blob
-    return blob[:int(start)] + bytes(updated_bytes) + blob[int(end):]
+    def set(self, blob: bytes, start_byte: float, num_bytes: float, value: int) -> bytes:
+        value_str = str(value)
+        num_nibbles = int(num_bytes * 2)
+        if len(value_str) > num_nibbles:
+            raise ValueError("Value too large for the specified number of BCD digits.")
+        # Pad with zeros if necessary
+        value_str = value_str.zfill(num_nibbles)
+        nibbles = [int(ch) for ch in value_str]
 
-def get_str(blob, start_byte, num_bytes):
-    decoded_chars = []
+        start_nibble = int(start_byte * 2)
+        end_nibble = start_nibble + num_nibbles
 
-    for byte in blob[start_byte:start_byte + num_bytes]:
-        try:
-            char = bytes([byte]).decode('utf-8')
-            decoded_chars.append(char)
-        except UnicodeDecodeError:
-            decoded_chars.append(f'0x{byte:02X}')
+        byte_start = start_nibble // 2
+        byte_end = (end_nibble + 1) // 2
+        data = bytearray(blob[byte_start:byte_end])
 
-    return ''.join(decoded_chars)
-    # return blob[start_byte:start_byte+num_bytes].decode('utf-8').rstrip('\x00')  # Assuming UTF-8 encoding and stripping null bytes
+        for i, nibble in enumerate(nibbles):
+            nibble_index = start_nibble + i
+            byte_index = (nibble_index - start_nibble) // 2
+            if nibble_index % 2 == 0:
+                # High nibble
+                data[byte_index] &= 0x0F  # Clear high nibble
+                data[byte_index] |= (nibble << 4)
+            else:
+                # Low nibble
+                data[byte_index] &= 0xF0  # Clear low nibble
+                data[byte_index] |= nibble
 
-def set_str(blob, start_byte, num_bytes, value):
-    encoded_value = value.encode('utf-8')
-    if len(encoded_value) > num_bytes:
-        raise ValueError("String too long for the specified number of bytes")
-    return blob[:start_byte] + encoded_value.ljust(num_bytes, b'\x00') + blob[start_byte+num_bytes:]
+        start = byte_start
+        end = byte_end
+        return blob[:start] + data + blob[end:]
 
-def get_ieee_float32(blob, start_byte, num_bytes):
-    if num_bytes == 4:  # float32
-        return struct.unpack('>f', blob[start_byte:start_byte+num_bytes])[0]
-    elif num_bytes == 8:  # float64
-        return struct.unpack('>d', blob[start_byte:start_byte+num_bytes])[0]
-    else:
-        raise ValueError("Unsupported number of bytes for float")
-
-def set_ieee_float32(blob, start_byte, num_bytes, value):
-    if num_bytes == 4:  # float32
-        return blob[:start_byte] + struct.pack('>f', value) + blob[start_byte+num_bytes:]
-    elif num_bytes == 8:  # float64
-        return blob[:start_byte] + struct.pack('>d', value) + blob[start_byte+num_bytes:]
-    else:
-        raise ValueError("Unsupported number of bytes for float")
-
-def get_ebcdic(blob, start_byte, num_bytes):
-    ebcdic_bytes = blob[start_byte:start_byte+num_bytes]
-    value = codecs.decode(ebcdic_bytes, 'cp500')  # 'cp500' represents EBCDIC encoding
-    return value
-
-def set_ebcdic(blob, start_byte, num_bytes, value):
-    # Truncate or pad the string to ensure it's of length num_bytes
-    adjusted_value = value[:num_bytes].ljust(num_bytes)
-    
-    # Convert the adjusted string to EBCDIC encoding
-    ebcdic_data = codecs.encode(adjusted_value, 'cp500')
-    return blob[:start_byte] + ebcdic_data + blob[start_byte+num_bytes:]
-
-def get_8036(blob, start_byte, num_bytes):
-    # Convert bytearray into a list of 3-byte integers
-    raw_ints = [int.from_bytes(blob[i:i+3], 'big') for i in range(0, len(blob), 3)]
-    ints = [twos_complement(val, 24) for val in raw_ints]
-    # Convert list of integers into a numpy array
-    return np.array(ints)
-
-def set_8036(blob, start_byte, num_bytes, value):
-    return blob
-
-def twos_complement(val, bits):
-    """Compute the 2's complement of an integer value."""
-    if val & (1 << (bits - 1)):
-        val -= 1 << bits
-    return val
-
-DECODERS = {
-    'bcd': {
-        'get': get_bcd,
-        'set': set_bcd
-    },
-    'uint': {
-        'get': get_uint,
-        'set': set_uint
-    },
-    'int': {
-        'get': get_int,
-        'set': set_int
-    },
-    'string': {
-        'get': get_str,
-        'set': set_str
-    },
-    'float32': {
-        'get': get_ieee_float32,
-        'set': set_ieee_float32
-    },
-    'ebcdic': {
-        'get': get_ebcdic,
-        'set': set_ebcdic
-    },
-    '8036': {
-        'get': get_8036,
-        'set': set_8036
+class DecoderFactory:
+    _decoders: Dict[FormatType, DecoderProtocol] = {
+        FormatType.BCD: BCDDecoder(),
+        FormatType.UINT: IntDecoder(signed=False),
+        FormatType.INT: IntDecoder(signed=True),
+        FormatType.STRING: StringDecoder(),
+        FormatType.FLOAT32: FloatDecoder(size=4),
+        FormatType.FLOAT64: FloatDecoder(size=8),
+        FormatType.EBCDIC: EBCDICDecoder(),
+        # Add other decoders as necessary...
     }
-    # ... (similar entries for other data formats)
-}
+
+    @classmethod
+    def get_decoder(cls, format_type: FormatType) -> DecoderProtocol:
+        decoder = cls._decoders.get(format_type)
+        if decoder is None:
+            raise ValueError(f"Unsupported format type: {format_type}")
+        return decoder
+
+# Usage Examples:
+if __name__ == "__main__":  
+    # Example binary blob
+    blob = b'\x12\x34\x56\x78\x9A\xBC\xDE\xF0'
+
+    # Decoding an unsigned integer
+    decoder = DecoderFactory.get_decoder(FormatType.UINT)
+    value = decoder.get(blob, start_byte=0, num_bytes=4)
+    print(f"Unsigned Int Value: {value}")
+
+    # Setting a new unsigned integer value
+    new_blob = decoder.set(blob, start_byte=0, num_bytes=4, value=123456789)
+    print(f"New Blob: {new_blob}")
+
+    # Decoding a BCD value
+    decoder = DecoderFactory.get_decoder(FormatType.BCD)
+    bcd_value = decoder.get(blob, start_byte=1.0, num_bytes=2.0)
+    print(f"BCD Value: {bcd_value}")
+
+    # Setting a new BCD value
+    new_blob = decoder.set(blob, start_byte=1.0, num_bytes=2.0, value=1234)
+    print(f"New Blob after BCD set: {new_blob}")
+
+    # Decoding a float32 value
+    decoder = DecoderFactory.get_decoder(FormatType.FLOAT32)
+    float_value = decoder.get(blob, start_byte=0, num_bytes=4)
+    print(f"Float32 Value: {float_value}")
+
+    # Setting a new float32 value
+    new_blob = decoder.set(blob, start_byte=0, num_bytes=4, value=3.14)
+    print(f"New Blob after Float32 set: {new_blob}")
