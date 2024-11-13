@@ -2,56 +2,118 @@ from construct import *
 import numpy as np
 
 class BCDField(Adapter):
+    """Adapter for Binary Coded Decimal (BCD) fields in SEG-D.
+    
+    Handles both regular BCD values (like "1234") and special values (like "FFFF").
+    Each digit is stored in 4 bits, allowing values 0-9 and F.
+    """
     def __init__(self, subcon):
         super().__init__(subcon)
     
     def _encode(self, obj, context, path):
-        """Convert hex string or number to binary
-        e.g., "1234" or "FFFF" -> 0x1234 or 0xFFFF"""
-        value = str(obj)
-        return int(value, 16)
+        """Convert hex string or number to binary for writing.
+        
+        Args:
+            obj: Input value (string or int)
+                e.g., "1234" or "FFFF" -> 0x1234 or 0xFFFF
+                      8058 -> 0x8058
+        Returns:
+            int: Binary representation of the BCD value
+        """
+        if isinstance(obj, str):
+            return int(obj, 16)  # Handle hex strings like "FFFF"
+        elif isinstance(obj, int):
+            # Convert decimal to BCD, each digit becomes 4 bits
+            # e.g., 8058 -> 0x8058
+            bcd = 0
+            for i, digit in enumerate(str(obj)[::-1]):
+                bcd |= (int(digit) << (4 * i))
+            return bcd
+        return obj
     
     def _decode(self, obj, context, path):
-        """Convert binary to hex string or number
-        e.g., 0x1234 -> 4660 (if valid number), "1234" (if not)"""
+        """Convert binary to hex string or number when reading.
+        
+        Args:
+            obj: Binary value to decode
+        Returns:
+            Union[str, int]: Hex string if contains 'F', otherwise decimal number
+                e.g., 0x1234 -> 4660 (if valid number)
+                      0xFFFF -> "FFFF" (if contains F)
+        """
         num_digits = self.subcon.length // 4  # 4 bits = 1 hex digit
         hex_str = np.base_repr(obj, 16).zfill(num_digits)
+        # Special handling for values containing 'F'
         if "F" in hex_str:
             return hex_str
         else:
             return int(hex_str)
 
 class HexField(Adapter):
+    """Adapter for hexadecimal fields in SEG-D.
+    
+    Used for fields that should be preserved as hex values without BCD encoding.
+    """
     def __init__(self, subcon):
         super().__init__(subcon)
     
     def _encode(self, obj, context, path):
-        """Convert number or hex string to binary
-        e.g., 0x1234 or "1234" -> 0x1234"""
+        """Convert number or hex string to binary.
+        
+        Args:
+            obj: Input value (string or int)
+                e.g., 0x1234 or "1234" -> 0x1234
+        Returns:
+            int: Binary representation of the hex value
+        """
         if isinstance(obj, str):
             return int(obj.replace('0x', ''), 16)
         return obj
     
     def _decode(self, obj, context, path):
+        """Convert binary to zero-padded hex string.
+        
+        Args:
+            obj: Binary value to decode
+        Returns:
+            str: Zero-padded hex string representation
+        """
         return np.base_repr(obj, 16).zfill(self.subcon.length // 4)
 
 class RawHeaderBlockField(Adapter):
+    """Adapter for 32-byte header blocks in SEG-D.
+    
+    Provides both hex and ASCII representations of header blocks,
+    useful for debugging and data inspection.
+    """
     def __init__(self, subcon):
         super().__init__(subcon)
     
     def _encode(self, obj, context, path):
-        """Convert dictionary back to bytes for writing"""
+        """Convert dictionary back to bytes for writing.
+        
+        Args:
+            obj: Dictionary with 'hex' and 'ascii' keys
+        Returns:
+            bytes: Raw 32-byte block
+        """
         if isinstance(obj, dict):
             # Convert hex string back to bytes
             return bytes.fromhex(obj['hex'])
         return obj
     
     def _decode(self, obj, context, path):
-        """Return both hex and ASCII representations of the 32-byte block"""
+        """Return both hex and ASCII representations of the 32-byte block.
+        
+        Args:
+            obj: Raw bytes to decode
+        Returns:
+            dict: Contains 'hex' (string) and 'ascii' (string) representations
+        """
         # Convert to hex
         hex_str = obj.hex().upper()
         
-        # Convert to ASCII, replacing non-ASCII bytes with '.'
+        # Convert to ASCII, replacing non-printable bytes with '.'
         ascii_str = ''.join(chr(b) if 32 <= b <= 126 else '.' for b in obj).rstrip('\x00')
         
         return {
@@ -60,12 +122,29 @@ class RawHeaderBlockField(Adapter):
         }
 
 class TraceDataAdapter(Adapter):
+    """Adapter for trace data samples in SEG-D.
+    
+    Currently supports:
+    - 8058: 32-bit IEEE float format
+
+    need to check endianness
+    
+    Other formats will raise NotImplementedError.
+    """
     def __init__(self, subcon, format_code):
         super().__init__(subcon)
         self.format_code = format_code
     
     def _encode(self, obj, context, path):
-        """Convert numpy array to bytes"""
+        """Convert numpy array to bytes for writing.
+        
+        Args:
+            obj: Numpy array of trace samples
+        Returns:
+            bytes: Raw byte representation of samples
+        Raises:
+            NotImplementedError: If format_code not supported
+        """
         if self.format_code != 8058:
             raise NotImplementedError(f"Format code {self.format_code} not yet implemented")
         
@@ -73,7 +152,15 @@ class TraceDataAdapter(Adapter):
         return obj.astype(np.float32).tobytes()
     
     def _decode(self, obj, context, path):
-        """Convert bytes to numpy array based on format code"""
+        """Convert bytes to numpy array based on format code.
+        
+        Args:
+            obj: Raw bytes to decode
+        Returns:
+            np.ndarray: Array of trace samples
+        Raises:
+            NotImplementedError: If format_code not supported
+        """
         if self.format_code != 8058:
             raise NotImplementedError(f"Format code {self.format_code} not yet implemented")
         
@@ -81,6 +168,13 @@ class TraceDataAdapter(Adapter):
         return np.frombuffer(obj, dtype=np.float32)
 
 def get_format_description(context):
+    """Get human-readable description of trace data format.
+    
+    Args:
+        context: Construct context containing format_code
+    Returns:
+        str: Description of the format
+    """
     # Lookup table for format codes
     FORMAT_LOOKUP = {
         8015: "20 bit binary demultiplexed",
