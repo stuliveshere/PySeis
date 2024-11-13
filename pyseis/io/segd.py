@@ -58,6 +58,7 @@ if __name__ == "__main__":
         print(f"  Channel Set: {trace.demux_header.channel_set_number}")
         print(f"  Trace Number: {trace.demux_header.trace_number}")
         print(f"  Data shape: {trace.trace_data.shape}")
+    print(reader.traces.traces[0].trace_data)
     
     # Write example
     reader.write("../../data/00016239_copy.segd")

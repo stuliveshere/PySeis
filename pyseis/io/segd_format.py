@@ -148,8 +148,8 @@ class TraceDataAdapter(Adapter):
         if self.format_code != 8058:
             raise NotImplementedError(f"Format code {self.format_code} not yet implemented")
         
-        # 8058: 32-bit IEEE float
-        return obj.astype(np.float32).tobytes()
+        # 8058: 32-bit IEEE float big-endian
+        return obj.astype('>f4').tobytes()
     
     def _decode(self, obj, context, path):
         """Convert bytes to numpy array based on format code.
@@ -164,8 +164,8 @@ class TraceDataAdapter(Adapter):
         if self.format_code != 8058:
             raise NotImplementedError(f"Format code {self.format_code} not yet implemented")
         
-        # 8058: 32-bit IEEE float
-        return np.frombuffer(obj, dtype=np.float32)
+        # 8058: 32-bit IEEE float big-endian
+        return np.frombuffer(obj, dtype='>f4')  # >f4 is big-endian float32
 
 def get_format_description(context):
     """Get human-readable description of trace data format.
