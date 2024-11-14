@@ -121,6 +121,53 @@ class RawHeaderBlockField(Adapter):
             'ascii': ascii_str
         }
 
+class BinaryFractionAdapter(Adapter):
+    """Adapter for binary fractions in SEG-D.
+    
+    Handles binary fractions of arbitrary byte length. The binary point is assumed
+    to be at the start of the number, making all bits fractional positions.
+    
+    Args:
+        subcon: The construct subconstructor (e.g., Int16ub)
+        nbytes: Number of bytes in the fraction (e.g., 2 for 16-bit fraction)
+    
+    Example:
+        For 16-bit fractions:
+        "frac" / BinaryFractionAdapter(Int16ub, 2)
+        0x8000 -> 0.5
+        0x4000 -> 0.25
+        0xC000 -> 0.75
+        
+        For 24-bit fractions:
+        "frac" / BinaryFractionAdapter(Int24ub, 3)
+        0x800000 -> 0.5
+        0x400000 -> 0.25
+    """
+    def __init__(self, subcon, nbytes):
+        super().__init__(subcon)
+        self.nbytes = nbytes
+        self.divisor = float(1 << (8 * nbytes))  # 2^(8*nbytes)
+    
+    def _decode(self, obj, context, path):
+        """Convert binary fraction to float.
+        
+        Args:
+            obj: Binary integer representing fraction
+        Returns:
+            float: Decimal representation of binary fraction
+        """
+        return obj / self.divisor
+    
+    def _encode(self, obj, context, path):
+        """Convert float to binary fraction.
+        
+        Args:
+            obj: Float value to encode
+        Returns:
+            int: Binary fraction representation
+        """
+        return int(obj * self.divisor)
+
 class TraceDataAdapter(Adapter):
     """Adapter for trace data samples in SEG-D.
     
@@ -287,9 +334,9 @@ general_header2 = Struct(
 general_header_n = Struct(
     "expanded_file_number" / Int24ub,
     "source_line_number_int" / Int24sb,
-    "source_line_number_frac" / Int16ub,
+    "source_line_number_frac" / BinaryFractionAdapter(Int16ub, 2),
     "source_point_number_int" / Int24sb,
-    "source_point_number_frac" / Int16ub,
+    "source_point_number_frac" / BinaryFractionAdapter(Int16ub, 2),
     "source_point_index" / Int8ub,
     "phase_control" / Int8ub,
     "vibrator_type" / Int8ub,
@@ -360,10 +407,10 @@ trace_header_extension_format = Struct(
     "receiver_point_index" / Int8sb,                        # RPIS, RPI6-RPI0: Receiver Point Index (1 byte, signed)
     "samples_per_trace" / Int24ub,                          # NBS23-NBS0: Number of Samples per Trace (3 bytes, unsigned)
     "extended_receiver_line_number_int" / Int24sb,          # ERLN: Extended Receiver Line Number (3 bytes integer)
-    "extended_receiver_line_number_frac" / Int16ub,         # ERLN: Extended Receiver Line Number (2 bytes fraction)
+    "extended_receiver_line_number_frac" / BinaryFractionAdapter(Int16ub, 2),  # ERLN: Extended Receiver Line Number (2 bytes fraction)
     "extended_receiver_point_number_int" / Int24sb,         # ERPN: Extended Receiver Point Number (3 bytes integer)
-    "extended_receiver_point_number_frac" / Int16ub,        # ERPN: Extended Receiver Point Number (2 bytes fraction)
-    "sensor_type" / Int8ub,                                 # SEN: Sensor Type (1 byte unsigned)
+    "extended_receiver_point_number_frac" / BinaryFractionAdapter(Int16ub, 2),        # ERPN: Extended Receiver Point Number (2 bytes fraction)
+    "sensor_type" / Int8ub,                                 # SEN: Sensor Type (1 byte signed)
     "sensor_type_description" / Computed(lambda ctx: {
         0: "Not defined", 1: "Hydrophone", 2: "Geophone Vertical", 
         3: "Geophone Horizontal inline", 4: "Geophone Horizontal cross-line", 

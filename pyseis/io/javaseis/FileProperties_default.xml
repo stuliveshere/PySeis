@@ -47,7 +47,7 @@
       1.0
       1.0
     </par>
-    <par name="HeaderLengthBytes" type="int"> 72 </par>
+    <par name="HeaderLengthBytes" type="int"> 68 </par>
   </parset>
   <parset name="TraceProperties">
     <parset name="entry_0">
