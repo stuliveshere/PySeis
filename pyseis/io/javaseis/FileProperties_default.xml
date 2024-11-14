@@ -1,0 +1,273 @@
+<parset name="JavaSeis Metadata">
+  <parset name="FileProperties">
+    <par name="Comments" type="string"> "www.javaseis.org - JavaSeis File Properties 2006.3" </par>
+    <par name="JavaSeisVersion" type="string"> 2006.3 </par>
+    <par name="DataType" type="string"> UNKNOWN </par>
+    <par name="TraceFormat" type="string"> COMPRESSED_INT16 </par>
+    <par name="ByteOrder" type="string"> LITTLE_ENDIAN </par>
+    <par name="Mapped" type="boolean"> true </par>
+    <par name="DataDimensions" type="int"> 3 </par>
+    <par name="AxisLabels" type="string">
+      TIME
+      TRACE
+      FRAME
+    </par>
+    <par name="AxisUnits" type="string">
+      milliseconds
+      meters
+      meters
+    </par>
+    <par name="AxisDomains" type="string">
+      time
+      space
+      space
+    </par>
+    <par name="AxisLengths" type="long">
+      0
+      0
+      0
+    </par>
+    <par name="LogicalOrigins" type="long">
+      0
+      0
+      0
+    </par>
+    <par name="LogicalDeltas" type="double">
+      1.0
+      1.0
+      1.0
+    </par>
+    <par name="PhysicalOrigins" type="double">
+      0.0
+      0.0
+      0.0
+    </par>
+    <par name="PhysicalDeltas" type="double">
+      1.0
+      1.0
+      1.0
+    </par>
+    <par name="HeaderLengthBytes" type="int"> 72 </par>
+  </parset>
+  <parset name="TraceProperties">
+    <parset name="entry_0">
+      <par name="label" type="string"> SEQNO </par>
+      <par name="description" type="string"> "Sequence number in ensemble" </par>
+      <par name="format" type="string"> INTEGER </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 0 </par>
+    </parset>
+    <parset name="entry_1">
+      <par name="label" type="string"> END_ENS </par>
+      <par name="description" type="string"> "End-of-ensemble flag*" </par>
+      <par name="format" type="string"> INTEGER </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 4 </par>
+    </parset>
+    <parset name="entry_2">
+      <par name="label" type="string"> EOJ </par>
+      <par name="description" type="string"> "End of job flag*" </par>
+      <par name="format" type="string"> INTEGER </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 8 </par>
+    </parset>
+    <parset name="entry_3">
+      <par name="label" type="string"> TRACENO </par>
+      <par name="description" type="string"> "Trace number in seismic line*" </par>
+      <par name="format" type="string"> INTEGER </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 12 </par>
+    </parset>
+    <parset name="entry_4">
+      <par name="label" type="string"> TRC_TYPE </par>
+      <par name="description" type="string"> "Trace type (data, aux, etc.)" </par>
+      <par name="format" type="string"> INTEGER </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 16 </par>
+    </parset>
+    <parset name="entry_5">
+      <par name="label" type="string"> TLIVE_S </par>
+      <par name="description" type="string"> "Start time of live samples" </par>
+      <par name="format" type="string"> FLOAT </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 20 </par>
+    </parset>
+    <parset name="entry_6">
+      <par name="label" type="string"> TFULL_S </par>
+      <par name="description" type="string"> "Start time of full samples" </par>
+      <par name="format" type="string"> FLOAT </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 24 </par>
+    </parset>
+    <parset name="entry_7">
+      <par name="label" type="string"> TFULL_E </par>
+      <par name="description" type="string"> "End time of full samples" </par>
+      <par name="format" type="string"> FLOAT </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 28 </par>
+    </parset>
+    <parset name="entry_8">
+      <par name="label" type="string"> TLIVE_E </par>
+      <par name="description" type="string"> "End time of live samples" </par>
+      <par name="format" type="string"> FLOAT </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 32 </par>
+    </parset>
+    <parset name="entry_9">
+      <par name="label" type="string"> LEN_SURG </par>
+      <par name="description" type="string"> "Length of surgical mute taper" </par>
+      <par name="format" type="string"> FLOAT </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 36 </par>
+    </parset>
+    <parset name="entry_10">
+      <par name="label" type="string"> TOT_STAT </par>
+      <par name="description" type="string"> "Total static for this trace" </par>
+      <par name="format" type="string"> FLOAT </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 40 </par>
+    </parset>
+    <parset name="entry_11">
+      <par name="label" type="string"> NA_STAT </par>
+      <par name="description" type="string"> "Portion of static not applied" </par>
+      <par name="format" type="string"> FLOAT </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 44 </par>
+    </parset>
+    <parset name="entry_12">
+      <par name="label" type="string"> AMP_NORM </par>
+      <par name="description" type="string"> "Amplitude normalization factor" </par>
+      <par name="format" type="string"> FLOAT </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 48 </par>
+    </parset>
+    <parset name="entry_13">
+      <par name="label" type="string"> TR_FOLD </par>
+      <par name="description" type="string"> "Actual trace fold" </par>
+      <par name="format" type="string"> FLOAT </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 52 </par>
+    </parset>
+    <parset name="entry_14">
+      <par name="label" type="string"> SKEWSTAT </par>
+      <par name="description" type="string"> "Multiplex skew static" </par>
+      <par name="format" type="string"> FLOAT </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 56 </par>
+    </parset>
+    <parset name="entry_15">
+      <par name="label" type="string"> LINE_NO </par>
+      <par name="description" type="string"> "Line number (hased line name)*" </par>
+      <par name="format" type="string"> INTEGER </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 60 </par>
+    </parset>
+    <parset name="entry_16">
+      <par name="label" type="string"> LSEG_END </par>
+      <par name="description" type="string"> "Line segment end*" </par>
+      <par name="format" type="string"> INTEGER </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 64 </par>
+    </parset>
+    <parset name="entry_17">
+      <par name="label" type="string"> LSEG_SEQ </par>
+      <par name="description" type="string"> "Line segment sequence number*" </par>
+      <par name="format" type="string"> INTEGER </par>
+      <par name="elementCount" type="int"> 1 </par>
+      <par name="byteOffset" type="int"> 68 </par>
+    </parset>
+  </parset>
+
+  <parset name="CustomProperties">
+    <par name="Synthetic" type="boolean"> false </par>
+    <par name="SecondaryKey" type="string"> SEQNO </par>
+    <par name="GeomMatchesFlag" type="int"> 1 </par>
+    <par name="PrimaryKey" type="string"> FRAME </par>
+    <par name="PrimarySort" type="string"> inline </par>
+    <par name="TraceNoMatchesFlag" type="int"> 0 </par>
+    <par name="Stacked" type="boolean"> true </par>
+    <par name="cookie" type="int"> 2003122 </par>
+    <parset name="FieldInstruments">
+      <par name="systemFormatCode" type="int"> 2139081118 </par>
+      <par name="nAuxChannels" type="int"> 2139081118 </par>
+      <par name="systemSerialNum" type="int"> 2139081118 </par>
+      <par name="earlyGain" type="float"> 0.0 </par>
+      <par name="systemDialinConst" type="float"> 3.4E38 </par>
+      <par name="systemManCode" type="int"> 2139081118 </par>
+      <par name="notchFiltFreq" type="float"> 0.0 </par>
+      <par name="highcutFiltSlope" type="float"> 0.0 </par>
+      <par name="lowcutFiltFreq" type="float"> 0.0 </par>
+      <par name="preampGain" type="float"> 0.0 </par>
+      <par name="notchFiltSlope" type="float"> 0.0 </par>
+      <par name="gainMode" type="int"> 0 </par>
+      <par name="originalSamprat" type="float"> 0.0 </par>
+      <par name="highcutFiltFreq" type="float"> 0.0 </par>
+      <par name="originalNumsmp" type="int"> 2001 </par>
+      <par name="aaFiltFreq" type="float"> 0.0 </par>
+      <par name="sourceType" type="int"> 2139081118 </par>
+      <par name="dateRecorded" type="int"> 0 </par>
+      <par name="lowcutFiltSlope" type="float"> 0.0 </par>
+      <par name="aaFiltSlope" type="float"> 0.0 </par>
+    </parset>
+    <parset name="Geometry">
+      <par name="minCdpExternal" type="int"> 0 </par>
+      <par name="nOffsetBins" type="int"> 2139081118 </par>
+      <par name="nCrosslinesExternal" type="int"> 0 </par>
+      <par name="ntracesTotal" type="long"> 2139081118 </par>
+      <par name="nCdps" type="int"> 1002 </par>
+      <par name="maxSin" type="int"> 2139081118 </par>
+      <par name="incChan" type="int"> 2139081118 </par>
+      <par name="ySurfLoc1" type="double"> 3.3999999521443642E38 </par>
+      <par name="offsetMax" type="float"> 3.4E38 </par>
+      <par name="units" type="int"> 3 </par>
+      <par name="incCdpExternal" type="int"> 0 </par>
+      <par name="xXLine1End" type="float"> 0.0 </par>
+      <par name="yILine1End" type="float"> 0.0 </par>
+      <par name="marine" type="int"> 0 </par>
+      <par name="dCdpILine" type="float"> 25.0 </par>
+      <par name="nInlinesExternal" type="int"> 0 </par>
+      <par name="maxSurfLoc" type="int"> 2139081118 </par>
+      <par name="multiComp" type="int"> 0 </par>
+      <par name="maxNtrSource" type="int"> 2139081118 </par>
+      <par name="maxILine" type="int"> 1 </par>
+      <par name="xILine1Start" type="float"> 0.0 </par>
+      <par name="cdpsAssigned" type="int"> 0 </par>
+      <par name="dCdpXLine" type="float"> 500.0 </par>
+      <par name="nILines" type="int"> 2 </par>
+      <par name="incOffsetBin" type="int"> 2139081118 </par>
+      <par name="minCdp" type="int"> 1 </par>
+      <par name="nSurfLocs" type="int"> 2139081118 </par>
+      <par name="offsetBinDist" type="float"> 3.4E38 </par>
+      <par name="maxXLine" type="int"> 500 </par>
+      <par name="finalDatum" type="float"> 3.4E38 </par>
+      <par name="yXLine1End" type="float"> 500.0 </par>
+      <par name="geomAssigned" type="int"> 0 </par>
+      <par name="yRef" type="double"> 0.0 </par>
+      <par name="incCdp" type="int"> 1 </par>
+      <par name="datumVel" type="float"> 3.4E38 </par>
+      <par name="azimuth" type="double"> 90.0 </par>
+      <par name="xSurfLoc1" type="double"> 3.3999999521443642E38 </par>
+      <par name="nXLines" type="int"> 501 </par>
+      <par name="nLiveGroups" type="int"> 2139081118 </par>
+      <par name="incSurfLoc" type="int"> 2139081118 </par>
+      <par name="maxNtrCdp" type="int"> 2139081118 </par>
+      <par name="maxCdp" type="int"> 1002 </par>
+      <par name="maxOffsetBin" type="int"> 2139081118 </par>
+      <par name="maxNtrRec" type="int"> 2139081118 </par>
+      <par name="minILine" type="int"> 0 </par>
+      <par name="maxChan" type="int"> 2139081118 </par>
+      <par name="minChan" type="int"> 2139081118 </par>
+      <par name="xRef" type="double"> 0.0 </par>
+      <par name="xILine1End" type="float"> 12500.0 </par>
+      <par name="minOffsetBin" type="int"> 2139081118 </par>
+      <par name="nLiveShots" type="int"> 2139081118 </par>
+      <par name="minXLine" type="int"> 0 </par>
+      <par name="minSurfLoc" type="int"> 2139081118 </par>
+      <par name="threeD" type="int"> 1 </par>
+      <par name="yILine1Start" type="float"> 0.0 </par>
+    </parset>
+    <parset name="extendedParmTable">
+    </parset>
+  </parset>
+</parset>
+

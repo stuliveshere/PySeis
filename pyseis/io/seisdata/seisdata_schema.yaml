@@ -1,0 +1,208 @@
+# seismic_schema.yaml
+
+dataframes:
+  source:
+    columns:
+      source_id: #unique source id
+        dtype: string
+      file_number: #recording file number
+        dtype: int32
+      source_index: #source index in file, from source line and station
+        dtype: int32
+      source_line: #source line number  
+        dtype: int32
+      source_station: #source station number
+        dtype: int32
+      source_x: #source x coordinate
+        dtype: float32
+      source_y: #source y coordinate
+        dtype: float32
+      source_z: #source z coordinate
+        dtype: float32
+      datum_z: #source datum z coordinate. elevation and depth can be calculated from this
+        dtype: float32
+      source_type: #source type, e.g. vibroseis, dynamite, etc.
+        dtype: string
+      datetime: #time of shot, to us precision
+        dtype: string
+      num_channels: #number of channels
+        dtype: int32
+      num_aux_channels: #number of auxiliary channels
+        dtype: int32
+      source_static: #source static
+        dtype: float32
+      num_sources: #number of physical sources
+        dtype: int32
+      uphole_time: #uphole time
+        dtype: float32
+      water_depth: #water depth
+        dtype: float32
+      sweep_number: #sweep number
+        dtype: int32
+
+  signature:
+    columns:
+      sig_sample_rates: #array of signature sample rates
+        dtype: float32[]
+      sig_data: #array of signature data. Each row is a signature
+        dtype: float32[][]
+
+  receiver:
+    columns:
+      receiver_id:
+        dtype: string
+      receiver_index:
+        dtype: int32
+      receiver_line:
+        dtype: int32
+      receiver_station:
+        dtype: int32
+      receiver_x:
+        dtype: float32
+      receiver_y:
+        dtype: float32
+      receiver_z:
+        dtype: float32
+      datum_z:
+        dtype: float32
+      num_samples:
+        dtype: int32
+      sample_rate:
+        dtype: float32
+      recording_delay:
+        dtype: float32
+      receiver_static:
+        dtype: float32
+      uphole_time:
+        dtype: float32
+      water_depth:
+        dtype: float32
+      coordinate_scalar:
+        dtype: float32
+      elevation_scalar:
+        dtype: float32
+
+  trace_header:
+    columns:
+      trace_id: #unique trace index
+        dtype: int32
+      trace_sequence_number: #trace sequence number in gather
+        dtype: int32
+      offset: #distance from source to receiver
+        dtype: float32
+      mute_start: #start of mute time
+        dtype: float32
+      mute_end: #end of mute time
+        dtype: float32
+      total_static: #total static applied to trace, e.g. source + receiver + cdp static
+        dtype: float32
+      trace_identification_code: #trace identification code, 0: invalid, 1: valid, 2: padding
+        dtype: int32
+      correlated: #correlated trace flag
+        dtype: bool
+      trace_weighting_factor: #trace weighting factor
+        dtype: float32
+
+
+  trace_data:
+    columns:
+      trace_id: #trace index
+        dtype: int32
+      source_id: #source id
+        dtype: string
+      receiver_id: #receiver id
+        dtype: string
+      cdp_id: #cdp id
+        dtype: string
+      trace_data: #array of trace data
+        dtype: float32[]
+
+  properties:
+    columns:
+      primary_sort: #primary sort, e.g. inline, crossline, time
+        dtype: string
+      secondary_sort: #secondary sort, e.g. time
+        dtype: string
+      trace_data_encoding: #trace encoding, e.g. 16 bit compressed, 32 bit float
+        dtype: string
+      endianness: #endianness, e.g. LSB, MSB
+        dtype: string
+
+  survey:
+    columns:
+      datum:
+        dtype: string
+      utm_zone:
+        dtype: string
+      geoid_model:
+        dtype: string
+      coordinate_units:
+        dtype: string
+      coordinate_reference_system:
+        dtype: string
+
+  instrument:
+    columns:
+      instrument_type:
+        dtype: string
+      serial_number:
+        dtype: string
+      calibration_date:
+        dtype: string
+      calibration_constant:
+        dtype: float32
+      gain_type:
+        dtype: string
+      gain_value:
+        dtype: float32
+      gain_unit:
+        dtype: string
+      instrument_gain:
+        dtype: float32
+      instrument_gain_type:
+        dtype: string
+      instrument_gain_unit:
+        dtype: string
+      instrument_gain_value:
+        dtype: float32
+      instrument_model:
+        dtype: string
+      instrument_manufacturer:
+        dtype: string
+      sensor_type:
+        dtype: string
+      sensor_sensitivity:
+        dtype: float32
+      sensor_frequency_response:
+        dtype: string
+      ADC_resolution:
+        dtype: string
+
+  job:
+    columns:
+      start_date:
+        dtype: string
+      end_date:
+        dtype: string
+      grid_origin_x:
+        dtype: float32
+      grid_origin_y:
+        dtype: float32
+      survey_name:
+        dtype: string
+      survey_type:
+        dtype: string
+      coordinate_system:
+        dtype: string
+      projection:
+        dtype: string
+      acquisition_company:
+        dtype: string
+      processing_company:
+        dtype: string
+      client:
+        dtype: string
+      acquisition_parameters:
+        dtype: string
+      processing_parameters:
+        dtype: string

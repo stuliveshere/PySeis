@@ -1,0 +1,9 @@
+<parset name="VirtualFolders">
+  <par name="NDIR" type="int"> 1 </par>
+  <par name="FILESYSTEM-0" type="string"> .,READ_WRITE </par>
+  <par name="Version" type="string"> 2006.2 </par>
+  <par name="Header" type="string"> "VFIO org.javaseis.io.VirtualFolder 2006.2" </par>
+  <par name="Type" type="string"> SS </par>
+  <par name="POLICY_ID" type="string"> RANDOM </par>
+  <par name="GLOBAL_REQUIRED_FREE_SPACE" type="long"> 209715200 </par>
+</parset>

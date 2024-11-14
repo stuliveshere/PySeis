@@ -1,0 +1,75 @@
+SU_TRACE_HEADER:
+  label: 'SU TRACE HEADER'
+  definition:
+    tracl:   {start_byte: 0,  num_bytes: 4, format: 'uint'} # Trace sequence number within line
+    tracr:   {start_byte: 4,  num_bytes: 4, format: 'uint'} # Trace sequence number within reel
+    fldr:    {start_byte: 8,  num_bytes: 4, format: 'uint'} # Original field record number
+    tracf:   {start_byte: 12, num_bytes: 4, format: 'uint'} # Trace number within the original field record
+    ep:      {start_byte: 16, num_bytes: 4, format: 'uint'} # Energy source point number
+    cdp:     {start_byte: 20, num_bytes: 4, format: 'uint'} # Ensemble number: CDP, CMP, CRP, etc.
+    cdpt:    {start_byte: 24, num_bytes: 4, format: 'uint'} # Trace number within the CDP ensemble
+    trid:    {start_byte: 28, num_bytes: 2, format: 'uint'} # Trace identification code
+    nvs:     {start_byte: 30, num_bytes: 2, format: 'uint'} # Number of vertically summed traces
+    nhs:     {start_byte: 32, num_bytes: 2, format: 'uint'} # Number of horizontally stacked traces
+    duse:    {start_byte: 34, num_bytes: 2, format: 'uint'} # Data use
+    offset:  {start_byte: 36, num_bytes: 4, format: 'uint'} # Distance from source point to receiver group center
+    gelev:   {start_byte: 40, num_bytes: 4, format: 'uint'} # Receiver group elevation
+    selev:   {start_byte: 44, num_bytes: 4, format: 'uint'} # Surface elevation at source
+    sdepth:  {start_byte: 48, num_bytes: 4, format: 'uint'} # Source depth below surface
+    gdel:    {start_byte: 52, num_bytes: 4, format: 'uint'} # Datum elevation at receiver group
+    sdel:    {start_byte: 56, num_bytes: 4, format: 'uint'} # Datum elevation at source
+    swdep:   {start_byte: 60, num_bytes: 4, format: 'uint'} # Water depth at source
+    gwdep:   {start_byte: 64, num_bytes: 4, format: 'uint'} # Water depth at group
+    scalel:  {start_byte: 68, num_bytes: 2, format: 'uint'} # Scalar for elevations and depths
+    scalco:  {start_byte: 70, num_bytes: 2, format: 'uint'} # Scalar for coordinates
+    sx:      {start_byte: 72, num_bytes: 4, format: 'uint'} # Source coordinate - X
+    sy:      {start_byte: 76, num_bytes: 4, format: 'uint'} # Source coordinate - Y
+    gx:      {start_byte: 80, num_bytes: 4, format: 'uint'} # Group coordinate - X
+    gy:      {start_byte: 84, num_bytes: 4, format: 'uint'} # Group coordinate - Y
+    counit:  {start_byte: 88, num_bytes: 2, format: 'uint'} # Coordinate units
+    wevel:   {start_byte: 90, num_bytes: 2, format: 'uint'} # Weathering velocity
+    swevel:  {start_byte: 92, num_bytes: 2, format: 'uint'} # Subweathering velocity
+    sut:     {start_byte: 94, num_bytes: 2, format: 'uint'} # Uphole time at source
+    gut:     {start_byte: 96, num_bytes: 2, format: 'uint'} # Uphole time at group
+    sstat:   {start_byte: 98, num_bytes: 2, format: 'uint'} # Source static correction
+    gstat:   {start_byte: 100, num_bytes: 2, format: 'uint'} # Group static correction
+    tstat:   {start_byte: 102, num_bytes: 2, format: 'uint'} # Total static applied
+    laga:    {start_byte: 104, num_bytes: 2, format: 'uint'} # Lag time A
+    lagb:    {start_byte: 106, num_bytes: 2, format: 'uint'} # Lag time B
+    delrt:   {start_byte: 108, num_bytes: 2, format: 'uint'} # Delay recording time
+    muts:    {start_byte: 110, num_bytes: 2, format: 'uint'} # Mute time - start
+    mute:    {start_byte: 112, num_bytes: 2, format: 'uint'} # Mute time - end
+    ns:      {start_byte: 114, num_bytes: 2, format: 'uint'} # Number of samples in this trace
+    dt:      {start_byte: 116, num_bytes: 2, format: 'uint'} # Sample interval for this trace
+    gain:    {start_byte: 118, num_bytes: 2, format: 'uint'} # Gain type of field instruments
+    igc:     {start_byte: 120, num_bytes: 2, format: 'uint'} # Instrument gain constant
+    igi:     {start_byte: 122, num_bytes: 2, format: 'uint'} # Instrument early or initial gain
+    corr:    {start_byte: 124, num_bytes: 2, format: 'uint'} # Correlated
+    sfs:     {start_byte: 126, num_bytes: 2, format: 'uint'} # Sweep frequency at start
+    sfe:     {start_byte: 128, num_bytes: 2, format: 'uint'} # Sweep frequency at end
+    slen:    {start_byte: 130, num_bytes: 2, format: 'uint'} # Sweep length
+    styp:    {start_byte: 132, num_bytes: 2, format: 'uint'} # Sweep type
+    stas:    {start_byte: 134, num_bytes: 2, format: 'uint'} # Sweep trace taper length at start
+    stae:    {start_byte: 136, num_bytes: 2, format: 'uint'} # Sweep trace taper length at end
+    tatyp:   {start_byte: 138, num_bytes: 2, format: 'uint'} # Taper type
+    afilf:   {start_byte: 140, num_bytes: 2, format: 'uint'} # Alias filter frequency
+    afils:   {start_byte: 142, num_bytes: 2, format: 'uint'} # Alias filter slope
+    nofilf:  {start_byte: 144, num_bytes: 2, format: 'uint'} # Notch filter frequency
+    nofils:  {start_byte: 146, num_bytes: 2, format: 'uint'} # Notch filter slope
+    lcf:     {start_byte: 148, num_bytes: 2, format: 'uint'} # Low cut frequency
+    hcf:     {start_byte: 150, num_bytes: 2, format: 'uint'} # High cut frequency
+    lcs:     {start_byte: 152, num_bytes: 2, format: 'uint'} # Low cut slope
+    hcs:     {start_byte: 154, num_bytes: 2, format: 'uint'} # High cut slope
+    year:    {start_byte: 156, num_bytes: 2, format: 'uint'} # Year data recorded
+    day:     {start_byte: 158, num_bytes: 2, format: 'uint'} # Day of year
+    hour:    {start_byte: 160, num_bytes: 2, format: 'uint'} # Hour of day
+    minute:  {start_byte: 162, num_bytes: 2, format: 'uint'} # Minute of hour
+    sec:     {start_byte: 164, num_bytes: 2, format: 'uint'} # Second of minute
+    timbas:  {start_byte: 166, num_bytes: 2, format: 'uint'} # Time basis code
+    trwf:    {start_byte: 168, num_bytes: 2, format: 'uint'} # Trace weighting factor
+    grnors:  {start_byte: 170, num_bytes: 2, format: 'uint'} # Geophone group number of roll switch position one
+    grnofr:  {start_byte: 172, num_bytes: 2, format: 'uint'} # Geophone group number of trace number one within original field record
+    grnlof:  {start_byte: 174, num_bytes: 2, format: 'uint'} # Geophone group number of last trace within original field record
+    gaps:    {start_byte: 176, num_bytes: 2, format: 'uint'} # Gap size
+    ofrav:   {start_byte: 178, num_bytes: 2, format: 'uint'} # Overtravel associated with taper
+
