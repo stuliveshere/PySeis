@@ -4,13 +4,19 @@ Handles binary trace and header data structures.
 Metadata is handled directly via XML in the main JavaSeis class.
 """
 
-from construct import (
-    Struct, Array, Int16ul, Int16ub, Int32ul, Int32ub, Int64ul, Int64ub,
-    Float32l, Float32b, Float64l, Float64b,
-    Adapter, Container, Padding, this
-)
+import os
+import sys
+from pathlib import Path
+
+# Add the project root to the Python path
+project_root = str(Path(__file__).parent.parent.parent.parent)
+sys.path.insert(0, project_root)
+
+from construct import *
 import numpy as np
 from math import floor
+from pyseis.io.javaseis.xml_models import FileProperties, TraceProperties
+
 
 class CompressedInt16Adapter(Adapter):
     """Adapter for JavaSeis COMPRESSED_INT16 format.
@@ -94,65 +100,49 @@ class CompressedInt16Adapter(Adapter):
             samples=samples
         )
 
-def build_trace_struct(nsamples, byte_order='little'):
+def build_trace_struct(file_properties: FileProperties) -> Struct:
     """Build trace struct for COMPRESSED_INT16 format
     
     Args:
-        nsamples: Number of samples per trace
-        byte_order: Byte order ('little' or 'big')
-    
+        file_properties: FileProperties instance containing trace format info
+        
     Returns:
         Struct: Construct struct for parsing traces
     """
+    # Get number of samples from axis lengths
+    nsamples = file_properties.AxisLengths[0]  # TIME axis is first
+    byte_order = 'little' if file_properties.ByteOrder == 'LITTLE_ENDIAN' else 'big'
+    
     return CompressedInt16Adapter(nsamples, byte_order)
 
-def build_header_struct(trace_headers, byte_order='little', header_length=360):
+def build_header_struct(trace_properties: TraceProperties) -> Struct:
     """Build header struct from trace header definitions
     
     Args:
-        trace_headers: List of header definitions from XML
-        byte_order: Byte order ('little' or 'big')
-        header_length: Total header length in bytes from FileProperties.xml
-    
+        trace_properties: TraceProperties instance containing header definitions
+        
     Returns:
         Struct: Construct struct for parsing headers
     """
-    # Map JavaSeis types to construct types
-    type_map = {
-        'INTEGER': Int32ul if byte_order == 'little' else Int32ub,
-        'LONG': Int64ul if byte_order == 'little' else Int64ub,
-        'FLOAT': Float32l if byte_order == 'little' else Float32b,
-        'DOUBLE': Float64l if byte_order == 'little' else Float64b
-    }
-    
-    # Sort headers by offset
-    sorted_headers = sorted(trace_headers, key=lambda x: x.get('offset', 0))
     subcons = {}
-    current_offset = 0
     
-    for header in sorted_headers:
-        # Add padding if needed
-        header_offset = header.get('offset', current_offset)
-        if header_offset > current_offset:
-            padding = header_offset - current_offset
-            subcons[f"_pad_{current_offset}"] = Padding(padding)
-        
-        # Get field type
-        field_type = type_map.get(header.get('format', 'INTEGER'))
-        if not field_type:
-            raise ValueError(f"Unsupported header type: {header.get('format')}")
-            
-        # Add field with name
-        name = header['name']
-        subcons[name] = field_type
-        current_offset = header_offset + field_type.sizeof()
-    
-    # Add final padding if needed to match header length
-    if current_offset < header_length:
-        subcons[f"_pad_{current_offset}"] = Padding(header_length - current_offset)
+    # Map JavaSeis types to Construct types
+    type_map = {
+        'INTEGER': Int32ul,
+        'FLOAT': Float32l,
+        'DOUBLE': Float64l,
+        'LONG': Int64ul,
+        'SHORT': Int16ul,
+        'BYTE': Int8ul
+    }
+    # Process each header entry
+    for entry in trace_properties.entries:
+        # Get field type and add to struct
+        field_type = type_map.get(entry.format)
+        if field_type:
+            subcons[entry.label] = field_type
     
     return Struct(**subcons)
-
 
 
 

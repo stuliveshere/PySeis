@@ -31,11 +31,9 @@ class EBCDICAdapter(Adapter):
 
 # SEGY format definition
 segy_format = Struct(
-    # Textual header: 3200 bytes (EBCDIC)
-    "EBCDIC" / EBCDICAdapter(Bytes(3200)),
-    
-    # Binary header: 400 bytes
-    "binary_header" / Struct(
+    "ebcdic" / Bytes(3200),
+
+    "binary" / Struct(
         "job_id" / Int32ub,
         "line_number" / Int32ub,
         "reel_number" / Int32ub,
@@ -63,14 +61,16 @@ segy_format = Struct(
         "measurement_system" / Int16ub,
         "impulse_signal_polarity" / Int16ub,
         "vibratory_polarity_code" / Int16ub,
-        "unassigned" / Bytes(170)  # Remaining bytes for custom data
+        None / Bytes(340)  # Remaining bytes for custom data
     ),
-    
-    # Trace headers and trace data
-    "traces" / GreedyRange(
+
+    "traces" / Array(
+        lambda this: (
+            this.binary.number_of_data_traces_per_ensemble +
+            this.binary.number_of_auxiliary_traces_per_ensemble
+        ),
         Struct(
-            # Trace header: 240 bytes
-            "trace_header" / Struct(
+            "header" / Struct(
                 "trace_sequence_number_within_line" / Int32ub,
                 "trace_sequence_number_within_file" / Int32ub,
                 "original_field_record_number" / Int32ub,
@@ -101,40 +101,19 @@ segy_format = Struct(
                 "subweathering_velocity" / Int16ub,
                 "uphole_time_at_source" / Int16ub,
                 "uphole_time_at_group" / Int16ub,
-                "source_static_correction" / Int16sb,
-                "group_static_correction" / Int16sb,
-                "total_static_applied" / Int16sb,
-                "lag_time_A" / Int16sb,
-                "lag_time_B" / Int16sb,
-                "delay_recording_time" / Int16sb,
+                "source_static_correction" / Int16ub,
+                "group_static_correction" / Int16ub,
+                "total_static_applied" / Int16ub,
+                "lag_time_A" / Int16ub,
+                "lag_time_B" / Int16ub,
+                "delay_recording_time" / Int16ub,
                 "mute_time_start" / Int16ub,
                 "mute_time_end" / Int16ub,
-                # The number of samples in this trace
                 "number_of_samples_in_this_trace" / Int16ub,
                 "sample_interval_in_this_trace" / Int16ub,
-                # ... Additional fields can be added here ...
-                "unassigned" / Bytes(120)  # Remaining bytes to complete 240 bytes
+                None / Bytes(240 - 118),
             ),
-            # Trace data with conditional format
-            "data" / Switch(
-                this.trace_header.data_sample_format_code,
-                {
-                    1: Array(this.trace_header.number_of_samples_in_this_trace, 
-                            IBMFloatAdapter(Int32ub)),  # IBM float
-                    2: Array(this.trace_header.number_of_samples_in_this_trace, 
-                            Int32sb),  # 4-byte integer
-                    3: Array(this.trace_header.number_of_samples_in_this_trace, 
-                            Int16sb),  # 2-byte integer
-                    4: Array(this.trace_header.number_of_samples_in_this_trace, 
-                            Int8sb),   # 4-bit integer
-                    5: Array(this.trace_header.number_of_samples_in_this_trace, 
-                            Float32b), # IEEE float
-                    8: Array(this.trace_header.number_of_samples_in_this_trace, 
-                            Int8sb),   # 1-byte integer
-                },
-                default=Array(this.trace_header.number_of_samples_in_this_trace, 
-                            Float32b)  # Default to IEEE float
-            )
+            "samples" / Debugger(Array(lambda this: this.header.number_of_samples_in_this_trace, Float32b)),
         )
     )
 )
