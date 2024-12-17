@@ -39,6 +39,8 @@ dataframes:
         dtype: float32
       sweep_number: #sweep number
         dtype: int32
+      signature_id: #signature id
+        dtype: int32
 
   signature:
     columns:

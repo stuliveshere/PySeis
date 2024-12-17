@@ -1,31 +1,18 @@
 """
 JavaSeis format definitions using construct library.
 Handles binary trace and header data structures.
-Metadata is handled directly via XML in the main JavaSeis class.
 """
-
-import os
-import sys
-from pathlib import Path
-
-# Add the project root to the Python path
-project_root = str(Path(__file__).parent.parent.parent.parent)
-sys.path.insert(0, project_root)
 
 from construct import *
 import numpy as np
 from math import floor
-from pyseis.io.javaseis.xml_models import FileProperties, TraceProperties
+import logging
+from .xml_io import JavaSeisXML
 
+logger = logging.getLogger(__name__)
 
 class CompressedInt16Adapter(Adapter):
-    """Adapter for JavaSeis COMPRESSED_INT16 format.
-    
-    Each trace is divided into windows. For each window:
-    - Calculate scale factor based on max absolute value
-    - Scale values to fit in int16 range [-32768, 32767]
-    - Store scale factor (float32) and scaled values (int16)
-    """
+    """Adapter for JavaSeis COMPRESSED_INT16 format."""
     def __init__(self, nsamples, byte_order='little'):
         self.windowln = 100  # Window length for compression
         self.nsamples = nsamples
@@ -58,12 +45,8 @@ class CompressedInt16Adapter(Adapter):
             if scalar > 0.0:
                 scalar = 1.0 / scalar
             
-            # Convert samples to int16 and handle scaling properly
-            # First create as uint16 since that's how it's stored
             window = np.array(obj.samples[k1:k2], dtype=np.uint16)
-            # Convert to signed by subtracting offset
-            window = window.astype(np.int32) - 32767  # Use int32 to avoid overflow
-            # Now convert to float32 and apply scaling
+            window = window.astype(np.int32) - 32767
             trace[k1:k2] = scalar * window.astype(np.float32)
         
         return trace
@@ -87,8 +70,6 @@ class CompressedInt16Adapter(Adapter):
             if maxval > 0:
                 scalar = 32766.0 / maxval
                 scalars[i] = scalar
-                
-                # Scale and shift to unsigned range
                 scaled = (scalar * window).astype(np.float32)
                 samples[k1:k2] = (scaled + 32767).clip(0, 65535).astype(np.uint16)
             else:
@@ -100,49 +81,83 @@ class CompressedInt16Adapter(Adapter):
             samples=samples
         )
 
-def build_trace_struct(file_properties: FileProperties) -> Struct:
-    """Build trace struct for COMPRESSED_INT16 format
+def build_trace_struct(file_props_tree) -> Struct:
+    """Build trace struct for COMPRESSED_INT16 format"""
+    from pyseis.io.javaseis.xml_io import JavaSeisXML
     
-    Args:
-        file_properties: FileProperties instance containing trace format info
+    logger.debug("Getting AxisLengths from FileProperties")
+    axis_lengths_str = JavaSeisXML.get(file_props_tree, "AxisLengths")
+    logger.debug(f"Raw AxisLengths: {axis_lengths_str}")
+    
+    if axis_lengths_str is None:
+        logger.error("AxisLengths not found in FileProperties XML")
+        raise ValueError("AxisLengths not found in FileProperties XML")
         
-    Returns:
-        Struct: Construct struct for parsing traces
-    """
-    # Get number of samples from axis lengths
-    nsamples = file_properties.AxisLengths[0]  # TIME axis is first
-    byte_order = 'little' if file_properties.ByteOrder == 'LITTLE_ENDIAN' else 'big'
+    axis_lengths = [int(x) for x in axis_lengths_str.split()]
+    logger.debug(f"Parsed AxisLengths: {axis_lengths}")
+    
+    nsamples = axis_lengths[0]  # TIME axis is first
+    logger.debug(f"Number of samples: {nsamples}")
+    
+    byte_order = JavaSeisXML.get(file_props_tree, "ByteOrder")
+    logger.debug(f"ByteOrder: {byte_order}")
+    byte_order = 'little' if byte_order == 'LITTLE_ENDIAN' else 'big'
     
     return CompressedInt16Adapter(nsamples, byte_order)
 
-def build_header_struct(trace_properties: TraceProperties) -> Struct:
-    """Build header struct from trace header definitions
+# Map JavaSeis types to construct types
+TYPE_MAP = {
+    'INTEGER': lambda name: Int32ul(name),
+    'FLOAT': lambda name: Float32l(name),
+    'DOUBLE': lambda name: Float64l(name),
+    'LONG': lambda name: Int64ul(name)
+}
+
+def build_header_struct(file_properties_tree):
+    """Build header struct from TraceProperties in FileProperties.xml"""
+    logger.debug("Building header struct from TraceProperties")
     
-    Args:
-        trace_properties: TraceProperties instance containing header definitions
+    # Get TraceProperties section
+    trace_props = file_properties_tree.find(".//parset[@name='TraceProperties']")
+    if trace_props is None:
+        raise ValueError("No TraceProperties section found in FileProperties.xml")
         
-    Returns:
-        Struct: Construct struct for parsing headers
-    """
-    subcons = {}
+    # Create struct fields with default values
+    struct_def = {}
+    default_values = {}  # Store default values for each field
     
-    # Map JavaSeis types to Construct types
-    type_map = {
-        'INTEGER': Int32ul,
-        'FLOAT': Float32l,
-        'DOUBLE': Float64l,
-        'LONG': Int64ul,
-        'SHORT': Int16ul,
-        'BYTE': Int8ul
-    }
-    # Process each header entry
-    for entry in trace_properties.entries:
-        # Get field type and add to struct
-        field_type = type_map.get(entry.format)
-        if field_type:
-            subcons[entry.label] = field_type
+    for entry in trace_props.findall("parset"):
+        label = JavaSeisXML.get(entry, "label")
+        fmt = JavaSeisXML.get(entry, "format")
+        count = int(JavaSeisXML.get(entry, "elementCount"))
+        offset = int(JavaSeisXML.get(entry, "byteOffset"))
+        
+        logger.debug(f"Adding header field: {label} ({fmt}) at offset {offset}")
+        
+        # Map format to construct type and set default value
+        if fmt == "INTEGER":
+            field = Int32ul
+            default = 0
+        elif fmt == "FLOAT":
+            field = Float32l
+            default = 0.0
+        elif fmt == "DOUBLE":
+            field = Float64l
+            default = 0.0
+        elif fmt == "LONG":
+            field = Int64ul
+            default = 0
+        else:
+            raise ValueError(f"Unknown format: {fmt}")
+            
+        if count > 1:
+            struct_def[label] = Array(count, field)
+            default_values[label] = [default] * count
+        else:
+            struct_def[label] = Default(field, default)
+            default_values[label] = default
     
-    return Struct(**subcons)
+    return Struct(**struct_def)
 
 
 

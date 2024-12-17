@@ -83,13 +83,10 @@ class SegD21Format:
 
         def get_trace_data_struct(ctx):
             """Get the trace data structure based on format code."""
-            # Map format codes to data types and sample sizes
-
-            # Get the number of samples per trace
-            return Array(
-                ctx.trace_header_extensions.ext1.samples_per_trace,
-                TraceDataAdapter(Float32b, ctx.general_header1.format_code),
-            )
+            # Get the number of bytes for entire trace (4 bytes per sample * number of samples)
+            num_bytes = ctx.trace_header_extensions.ext1.samples_per_trace * 4
+            
+            return TraceDataAdapter(Bytes(num_bytes), 8058)
 
         # Define the top-level SEG-D structure
         segd_file = Struct(

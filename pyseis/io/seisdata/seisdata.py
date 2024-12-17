@@ -4,7 +4,7 @@ import yaml
 from typing import Optional, Union, Dict, Any
 import os
 
-class SeismicData:
+class SeisData:
     """
     A class to manage seismic data including sources, receivers, traces,
     and common metadata using Pandas and Dask for efficient data handling.

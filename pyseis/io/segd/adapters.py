@@ -175,25 +175,16 @@ class TraceDataAdapter(Adapter):
     
     Currently supports:
     - 8058: 32-bit IEEE float format
-
-    need to check endianness
-    
-    Other formats will raise NotImplementedError.
     """
     def __init__(self, subcon, format_code):
         super().__init__(subcon)
+        # If format_code is a callable (like this.general_header1.format_code),
+        # we'll evaluate it later when we have the context
         self.format_code = format_code
     
     def _encode(self, obj, context, path):
-        """Convert numpy array to bytes for writing.
+        """Convert numpy array to bytes for writing."""
         
-        Args:
-            obj: Numpy array of trace samples
-        Returns:
-            bytes: Raw byte representation of samples
-        Raises:
-            NotImplementedError: If format_code not supported
-        """
         if self.format_code != 8058:
             raise NotImplementedError(f"Format code {self.format_code} not yet implemented")
         
@@ -201,15 +192,8 @@ class TraceDataAdapter(Adapter):
         return obj.astype('>f4').tobytes()
     
     def _decode(self, obj, context, path):
-        """Convert bytes to numpy array based on format code.
+        """Convert bytes to numpy array based on format code."""
         
-        Args:
-            obj: Raw bytes to decode
-        Returns:
-            np.ndarray: Array of trace samples
-        Raises:
-            NotImplementedError: If format_code not supported
-        """
         if self.format_code != 8058:
             raise NotImplementedError(f"Format code {self.format_code} not yet implemented")
         
