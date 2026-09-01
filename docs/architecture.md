@@ -21,23 +21,48 @@ Unlike traditional multi-file formats or complex directory trees, a `pyseis-io` 
 
 Or, for in-memory streaming pipelines, a RAM-resident byte buffer (`io.BytesIO` / `pyarrow.Buffer`).
 
-### **Parquet Table Schema**
+### **Parquet Table Schema (Essential Header Taxonomy)**
 
-Every row in the Parquet table represents **1 seismic trace**:
+Every row in the Parquet table represents **1 seismic trace** containing its 1D trace vector (`samples`) and associated domain headers:
 
-| Column Name | Apache Arrow Data Type | Description |
-| :--- | :--- | :--- |
-| **`samples`** | `FixedSizeList(Float32, n_samples)` | Trace amplitude vector of length `n_samples` |
-| **`trace_id`** | `Int32` | Unique trace index within dataset |
-| **`source_id`** | `Int32` or `String` | Source / Shot identifier |
-| **`receiver_id`** | `Int32` or `String` | Receiver identifier |
-| **`cdp_id`** | `Int32` | Common Depth Point / Midpoint identifier |
-| **`trace_sequence_number`** | `Int32` | Sequence number within gather |
-| **`offset`** | `Float32` | Source-to-receiver offset distance |
-| **`source_x`**, **`source_y`** | `Float64` | Source coordinates |
-| **`receiver_x`**, **`receiver_y`** | `Float64` | Receiver coordinates |
-| **`cdp_x`**, **`cdp_y`** | `Float64` | CDP coordinates |
-| *...custom headers* | *scalar types* | Any acquisition/processing headers |
+#### **1. Trace Keys & Data**
+* **`samples`**: `FixedSizeList(Float32, n_samples)` — 1D amplitude time series vector
+* **`offset`**: `Float32` — Source-to-receiver offset distance
+* **`mute_start`**, **`mute_end`**: `Float32` — Mute start and end times
+* **`total_static`**: `Float32` — Total static correction applied
+* **`trace_code`**: `Int32` — Trace status flag (`1` = Live, `2` = Dead, `3` = Aux)
+* **`trace_weighting_factor`**: `Float32` — Trace weighting factor
+
+#### **2. Shot Keys (Source Domain)**
+* **`shot_number`** / **`file_number`**: `Int32` — Field record number (`fldr`)
+* **`source_line`**: `Int32` — Source line number
+* **`source_station`**: `Int32` — Source station number
+* **`source_index`**: `Int32` — Source index at station
+* **`shot_time`**: `Int64` — Millisecond-accurate Unix epoch timestamp (`ms` since 1970-01-01)
+* **`recording_delay`**: `Float32` — Recording start delay time
+* **`source_x`**, **`source_y`**: `Float64` — Source Easting / Northing coordinates
+* **`source_elevation`**: `Float32` — Surface elevation at source
+* **`source_depth`**: `Float32` — Source depth below surface
+* **`source_static`**: `Float32` — Source static correction
+
+#### **3. Receiver Keys (Receiver Domain)**
+* **`channel_number`**: `Int32` — Channel number within field record (`tracf`)
+* **`receiver_line`**: `Int32` — Receiver line number
+* **`receiver_station`**: `Int32` — Receiver station number
+* **`receiver_index`**: `Int32` — Receiver index at station
+* **`receiver_x`**, **`receiver_y`**: `Float64` — Receiver Easting / Northing coordinates
+* **`receiver_elevation`**: `Float32` — Surface elevation at receiver
+* **`receiver_static`**: `Float32` — Receiver static correction
+
+#### **4. CDP Keys (Stacking / 3D Binning Domain)**
+* **`cdp`**: `Int32` — Common Depth Point / Ensemble number
+* **`cdp_trace_number`**: `Int32` — Trace sequence number within CDP ensemble
+* **`inline`**: `Int32` — 3D Inline number
+* **`crossline`**: `Int32` — 3D Crossline number
+* **`cdp_x`**, **`cdp_y`**: `Float64` — Midpoint / CDP bin center coordinates
+
+#### **5. Other**
+* Arbitrary user-defined pass-through header columns.
 
 ---
 
