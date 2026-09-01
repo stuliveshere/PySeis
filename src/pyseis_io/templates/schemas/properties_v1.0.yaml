@@ -1,6 +1,0 @@
-version: '1.0'
-description: 'Dataset properties and configuration metadata'
-primary_sort: null
-secondary_sort: null
-trace_data_encoding: null
-endianness: null

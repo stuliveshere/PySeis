@@ -1,7 +1,0 @@
-version: '1.0'
-description: 'Survey metadata'
-datum: null
-utm_zone: null
-geoid_model: null
-coordinate_units: null
-coordinate_reference_system: null

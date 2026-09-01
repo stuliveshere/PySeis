@@ -1,6 +1,0 @@
-version: '1.0'
-description: 'Trace data array structure'
-dtype: float32
-dimension_names:
-  - traces
-  - samples

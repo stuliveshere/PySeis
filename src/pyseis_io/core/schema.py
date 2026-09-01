@@ -1,203 +1,113 @@
 """
-Schema management for pyseis-io datasets.
+PyArrow schema utilities for pyseis-io single-Parquet datasets.
 
-Handles schema template access, installation, versioning, and validation.
+Provides clean PyArrow schema construction for FixedSizeList trace sample vectors
+and standardized domain header data types.
 """
 
-import hashlib
-import yaml
-import datetime
-from pathlib import Path
-from typing import Dict, Any
-import importlib.resources
+from typing import Dict, Any, Optional
+import pyarrow as pa
+import pandas as pd
 
-class SchemaManager:
+# Default Arrow data types for standard seismic domain headers
+DEFAULT_HEADER_TYPES: Dict[str, pa.DataType] = {
+    # Trace Keys & Data
+    "offset": pa.float32(),
+    "mute_start": pa.float32(),
+    "mute_end": pa.float32(),
+    "total_static": pa.float32(),
+    "trace_code": pa.int32(),  # 1: Live, 2: Dead, 3: Aux
+    "trace_weighting_factor": pa.float32(),
+
+    # Shot Keys (Source Domain)
+    "shot_number": pa.int32(),
+    "file_number": pa.int32(),
+    "source_line": pa.int32(),
+    "source_station": pa.int32(),
+    "source_index": pa.int32(),
+    "shot_time": pa.int64(),  # Milliseconds since Unix Epoch
+    "recording_delay": pa.float32(),
+    "source_x": pa.float64(),
+    "source_y": pa.float64(),
+    "source_elevation": pa.float32(),
+    "source_depth": pa.float32(),
+    "source_static": pa.float32(),
+
+    # Receiver Keys (Receiver Domain)
+    "channel_number": pa.int32(),
+    "receiver_line": pa.int32(),
+    "receiver_station": pa.int32(),
+    "receiver_index": pa.int32(),
+    "receiver_x": pa.float64(),
+    "receiver_y": pa.float64(),
+    "receiver_elevation": pa.float32(),
+    "receiver_static": pa.float32(),
+
+    # CDP Keys (Stacking / 3D Binning Domain)
+    "cdp": pa.int32(),
+    "cdp_trace_number": pa.int32(),
+    "inline": pa.int32(),
+    "crossline": pa.int32(),
+    "cdp_x": pa.float64(),
+    "cdp_y": pa.float64(),
+}
+
+def get_trace_vector_type(n_samples: int) -> pa.DataType:
     """
-    Manages schema lifecycle for a dataset.
+    Construct a PyArrow FixedSizeList type for trace sample vectors of length n_samples.
+    
+    Args:
+        n_samples: Number of amplitude samples per trace.
+        
+    Returns:
+        pa.DataType representing FixedSizeList(Float32, n_samples).
     """
+    return pa.list_(pa.float32(), n_samples)
+
+def build_dataset_schema(
+    n_samples: int,
+    headers_df: Optional[pd.DataFrame] = None,
+    custom_types: Optional[Dict[str, pa.DataType]] = None
+) -> pa.Schema:
+    """
+    Build a complete PyArrow Schema for a single-Parquet dataset.
     
-    MANIFEST_FILENAME = "schema_manifest.yaml"
-    SCHEMA_DIR_NAME = "schema"
+    Args:
+        n_samples: Length of each trace sample vector.
+        headers_df: Optional Pandas DataFrame of header columns to infer types from.
+        custom_types: Optional map of column name -> PyArrow DataType overrides.
+        
+    Returns:
+        pa.Schema with 'samples' vector column and scalar header fields.
+    """
+    fields = [pa.field("samples", get_trace_vector_type(n_samples))]
     
-    def __init__(self, dataset_root: Path):
-        """
-        Initialize the schema manager.
-        
-        Args:
-            dataset_root: Root directory of the dataset.
-        """
-        self.dataset_root = Path(dataset_root)
-        self.schema_dir = self.dataset_root / self.SCHEMA_DIR_NAME
-        self.manifest_path = self.dataset_root / "metadata" / self.MANIFEST_FILENAME
-
-    def install(self) -> None:
-        """
-        Install schema templates to the dataset.
-        
-        Creates the versioned directory structure and generates the manifest.
-        """
-        self.schema_dir.mkdir(parents=True, exist_ok=True)
-        
-        installed_schemas = {}
-        
-        # Access templates using importlib.resources
-        # We assume templates are in pyseis_io.templates.schemas
-        # Note: This requires the templates directory to be a python package (have __init__.py)
-        # or use files() API for python 3.9+
-        
-        try:
-            # Python 3.9+ API
-            template_files = importlib.resources.files('pyseis_io.templates.schemas').glob('*.yaml')
-        except (ImportError, AttributeError):
-             # Fallback for older python or if structure differs slightly
-             # For now assuming 3.9+ as per pyproject.toml requires-python
-             raise RuntimeError("Python 3.9+ required for schema resources")
-
-        for template_path in template_files:
-            if not template_path.is_file():
-                continue
-                
-            filename = template_path.name
-            # Parse filename to determine component and version
-            # Expected format: [component]_v[version].yaml
-            # e.g., source_v1.0.yaml, layout_v1.0.yaml
-            
-            if "_v" not in filename:
-                continue
-                
-            component, version_ext = filename.split("_v", 1)
-            version = version_ext.replace(".yaml", "")
-            
-            # Create component directory
-            # e.g., schema/source/
-            component_dir = self.schema_dir / component
-            component_dir.mkdir(exist_ok=True)
-            
-            # Target path: schema/source/v1.0.yaml
-            target_filename = f"v{version}.yaml"
-            target_path = component_dir / target_filename
-            
-            # Copy file content
-            content = template_path.read_bytes()
-            with open(target_path, 'wb') as f:
-                f.write(content)
-                
-            # Calculate checksum
-            checksum = hashlib.sha256(content).hexdigest()
-            
-            installed_schemas[component] = {
-                "path": f"{self.SCHEMA_DIR_NAME}/{component}/{target_filename}",
-                "version": version,
-                "checksum": f"sha256:{checksum}"
-            }
-            
-        self._write_manifest(installed_schemas)
-
-    def _write_manifest(self, schemas: Dict[str, Any]) -> None:
-        """Write the schema manifest file."""
-        # Get version using importlib.metadata
-        try:
-            from importlib.metadata import version
-            pyseis_io_version = version("pyseis-io")
-        except Exception:
-            # Fallback if not installed or in development
-            pyseis_io_version = "unknown"
-        
-        manifest = {
-            "schemas": schemas,
-            "generated_by": {
-                "pyseis_io_version": pyseis_io_version,
-                "timestamp": datetime.datetime.utcnow().isoformat()
-            }
-        }
-        
-        # Ensure metadata dir exists
-        self.manifest_path.parent.mkdir(exist_ok=True)
-        
-        with open(self.manifest_path, 'w') as f:
-            yaml.dump(manifest, f, sort_keys=False)
-
-    def validate(self) -> None:
-        """
-        Validate the dataset schemas against the manifest.
-        
-        Raises:
-            FileNotFoundError: If manifest or schema files are missing.
-            ValueError: If checksums do not match (integrity check failure).
-        """
-        if not self.manifest_path.exists():
-            raise FileNotFoundError(f"Schema manifest not found: {self.manifest_path}")
-            
-        with open(self.manifest_path, 'r') as f:
-            manifest = yaml.safe_load(f)
-            
-        schemas = manifest.get("schemas", {})
-        
-        for component, info in schemas.items():
-            rel_path = info.get("path")
-            expected_checksum = info.get("checksum")
-            
-            if not rel_path:
-                continue
-                
-            full_path = self.dataset_root / rel_path
-            
-            if not full_path.exists():
-                raise FileNotFoundError(f"Schema file missing for {component}: {full_path}")
-                
-            # Verify checksum
-            if expected_checksum:
-                algo, hash_val = expected_checksum.split(":", 1)
-                if algo != "sha256":
-                    # Warn or skip unknown algos
-                    continue
-                    
-                with open(full_path, 'rb') as f:
-                    content = f.read()
-                    actual_hash = hashlib.sha256(content).hexdigest()
-                    
-                if actual_hash != hash_val:
-                    raise ValueError(
-                        f"Schema integrity check failed for {component}. "
-                        f"Expected {hash_val}, got {actual_hash}"
-                    )
+    overrides = custom_types or {}
     
-    def validate_dataframe(self, df, schema_name: str) -> None:
-        """
-        Validate a DataFrame against a schema.
-        
-        Args:
-            df: pandas DataFrame to validate
-            schema_name: Name of the schema (e.g., 'source', 'receiver', 'trace_header')
+    if headers_df is not None:
+        for col in headers_df.columns:
+            if col == "samples":
+                continue
+            if col in overrides:
+                col_type = overrides[col]
+            elif col in DEFAULT_HEADER_TYPES:
+                col_type = DEFAULT_HEADER_TYPES[col]
+            else:
+                # Convert pandas dtype to PyArrow dtype
+                col_type = pa.Schema.from_pandas(headers_df[[col]]).field(0).type
+            fields.append(pa.field(col, col_type))
             
-        Raises:
-            FileNotFoundError: If schema file not found
-            ValueError: If DataFrame doesn't match schema requirements
-        """
-        import yaml
-        import pandas as pd
-        
-        if df is None:
-            return
-            
-        # Load the schema
-        schema_path = self.schema_dir / schema_name / "v1.0.yaml"
-        if not schema_path.exists():
-            raise FileNotFoundError(f"Schema file not found: {schema_path}")
-            
-        with open(schema_path, 'r') as f:
-            schema = yaml.safe_load(f)
-            
-        if 'columns' not in schema:
-            return  # No column validation needed
-            
-        schema_cols = set(schema['columns'].keys())
-        df_cols = set(df.columns)
-        
-        # Check for missing required columns
-        missing = schema_cols - df_cols
-        if missing:
-            raise ValueError(
-                f"{schema_name} validation failed: Missing required columns: {missing}"
-            )
+    return pa.schema(fields)
 
+def validate_header_dataframe(df: pd.DataFrame) -> None:
+    """
+    Validate that a header DataFrame is valid for writing.
+    
+    Args:
+        df: Pandas DataFrame of trace headers.
+        
+    Raises:
+        ValueError: If DataFrame is invalid or empty.
+    """
+    if df is None or not isinstance(df, pd.DataFrame):
+        raise ValueError("Header data must be a non-empty pandas DataFrame")
