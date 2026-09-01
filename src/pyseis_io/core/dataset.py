@@ -1,340 +1,269 @@
 """
-Core data models and structures for seismic data representation.
+Core data models and high-level SeismicData interface for pyseis-io.
 """
 
-from typing import Optional, Union, Tuple, List
+import io
 from pathlib import Path
+from typing import Optional, Union, Tuple, List, Dict, Any
 import numpy as np
 import pandas as pd
-import dask.array as da
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-class ParquetHeaderStore:
-    """
-    A lightweight wrapper around a Parquet file for efficient, lazy header access.
-    
-    This store is responsible for reading contiguous windows of rows from the 
-    Parquet file into Arrow Tables. It does not handle complex indexing logic;
-    that is delegated to the in-memory Pandas DataFrame materialized by SeismicData.
-    """
-    def __init__(self, path: str):
-        self.path = path
-        self.pq_file = pq.ParquetFile(path)
-        self.num_rows = self.pq_file.metadata.num_rows
-        
-        # Build row group index for fast slicing
-        self.row_groups = []
-        start = 0
-        for i in range(self.pq_file.num_row_groups):
-            n = self.pq_file.metadata.row_group(i).num_rows
-            self.row_groups.append({
-                'id': i,
-                'start': start,
-                'end': start + n,
-                'num_rows': n
-            })
-            start += n
-
-    def read_window(self, start: int, stop: int, columns: Optional[List[str]] = None) -> pa.Table:
-        """
-        Read a contiguous window of rows [start:stop) as an Arrow Table.
-        """
-        if start < 0: start += self.num_rows
-        if stop < 0: stop += self.num_rows
-        start = max(0, start)
-        stop = min(self.num_rows, stop)
-        
-        if start >= stop:
-            return self.pq_file.schema.empty_table()
-
-        # Find relevant row groups
-        groups_to_read = []
-        for rg in self.row_groups:
-            # Check overlap: rg_start < stop AND rg_end > start
-            if rg['start'] < stop and rg['end'] > start:
-                groups_to_read.append(rg['id'])
-        
-        if not groups_to_read:
-            return self.pq_file.schema.empty_table()
-
-        # Read the row groups
-        table = self.pq_file.read_row_groups(groups_to_read, columns=columns)
-        
-        # Calculate offset within the read table
-        first_group_start = self.row_groups[groups_to_read[0]]['start']
-        rel_start = start - first_group_start
-        length = stop - start
-        
-        return table.slice(rel_start, length)
-    
-    def __len__(self):
-        return self.num_rows
-
-    def close(self):
-        """Release the ParquetFile resource."""
-        self.pq_file = None
+from .reader import InternalFormatReader
+from .writer import InternalFormatWriter
 
 class SeismicData:
     """
-    A lazy-loading container for seismic data and headers.
-    
-    Attributes:
-        data (dask.array.Array): Lazy trace data (traces x samples).
-        header_store (ParquetHeaderStore): The source of truth for headers.
-        sample_rate (float): Sample rate in microseconds.
+    High-level, unified container for seismic trace data, headers, and metadata.
+    Backed by Apache Arrow Tables for zero-copy 2D NumPy array access and fast gather filtering.
     """
 
     def __init__(
         self,
-        data: da.Array,
-        header_store: ParquetHeaderStore,
-        sample_rate: float,
-        file_path: Optional[str] = None,
-        _trace_slice: Optional[slice] = None
+        table: pa.Table,
+        metadata: Optional[Dict[str, Any]] = None,
+        source_path: Optional[Union[str, Path]] = None
     ):
-        self.data = data
-        self.header_store = header_store
-        self.sample_rate = sample_rate
-        self.file_path = Path(file_path) if file_path else None
+        """
+        Initialize a SeismicData instance.
         
-        # Internal state to track the current view window
-        # If None, represents the full dataset
-        self._trace_slice = _trace_slice or slice(0, data.shape[0], 1)
+        Args:
+            table: PyArrow Table containing trace vector column 'samples' and header columns.
+            metadata: Dataset metadata dictionary.
+            source_path: Optional file path origin.
+        """
+        if not isinstance(table, pa.Table):
+            raise TypeError("table must be a PyArrow Table")
+            
+        self.table = table
+        self.source_path = Path(source_path) if source_path else None
+        
+        # Extract metadata from table schema or argument
+        if metadata is not None:
+            self.metadata = metadata
+        else:
+            from .footer_metadata import decode_footer_metadata
+            self.metadata = decode_footer_metadata(table.schema.metadata)
+            
+        # Inspect trace vector type for n_samples
+        if "samples" in table.column_names:
+            samples_type = table.schema.field("samples").type
+            if isinstance(samples_type, pa.FixedSizeListType):
+                self._n_samples = samples_type.list_size
+            else:
+                self._n_samples = self.metadata.get("n_samples", 0)
+        else:
+            self._n_samples = self.metadata.get("n_samples", 0)
 
     @property
     def n_traces(self) -> int:
-        return self.data.shape[0]
+        """Total number of traces in this view."""
+        return len(self.table)
 
     @property
     def n_samples(self) -> int:
-        return self.data.shape[1]
-        
+        """Number of time samples per trace."""
+        return self._n_samples
+
+    @property
+    def sample_rate(self) -> float:
+        """Sample interval in seconds (e.g. 0.002 for 2ms)."""
+        return float(self.metadata.get("sample_rate", 0.002))
+
+    @property
+    def provenance(self) -> List[Dict[str, Any]]:
+        """List of provenance history events."""
+        return self.metadata.get("provenance", [])
+
+    @property
+    def data(self) -> np.ndarray:
+        """
+        Extract 2D NumPy array of trace amplitudes (n_traces, n_samples).
+        Zero-copy view backed by PyArrow memory buffers.
+        """
+        if "samples" not in self.table.column_names or len(self.table) == 0:
+            return np.empty((0, self.n_samples), dtype=np.float32)
+            
+        chunked = self.table["samples"].combine_chunks()
+        values = chunked.values.to_numpy()
+        return values.reshape(self.n_traces, self.n_samples)
+
     @property
     def headers(self) -> pd.DataFrame:
         """
-        Materialize the full headers (Trace + Source + Receiver) as a Pandas DataFrame.
-        Perform automatic Left Join on source_id and receiver_id.
+        Materialize scalar trace headers as a Pandas DataFrame (excluding 'samples').
         """
-        # 1. Read Trace Headers (Windowed)
-        start, stop, step = self._trace_slice.indices(len(self.header_store))
-        table = self.header_store.read_window(start, stop)
-        trace_df = table.to_pandas(types_mapper=pd.ArrowDtype)
-        if step != 1:
-            trace_df = trace_df.iloc[::step]
+        header_cols = [c for c in self.table.column_names if c != "samples"]
+        if not header_cols:
+            return pd.DataFrame(index=range(self.n_traces))
+        return self.table.select(header_cols).to_pandas()
+
+    def filter(self, **kwargs) -> 'SeismicData':
+        """
+        Filter traces by exact header match (e.g. sd.filter(shot_number=105, cdp=1200)).
+        
+        Args:
+            **kwargs: Header key-value pairs to match.
             
-        # 2. Join Source Attributes
-        if 'source_id' in trace_df.columns and self.source_headers is not None:
-             # Merge left
-             trace_df = pd.merge(trace_df, self.source_headers, on='source_id', how='left', suffixes=('', '_dup'))
-             
-        # 3. Join Receiver Attributes
-        if 'receiver_id' in trace_df.columns and self.receiver_headers is not None:
-             trace_df = pd.merge(trace_df, self.receiver_headers, on='receiver_id', how='left', suffixes=('', '_dup'))
-             
-        # Clean up duplicates if any (though logic shouldn't produce them if schemas disjoint)
-        # Suffixes handles collisions.
-             
-        return trace_df
-
-    @property
-    def source_headers(self) -> Optional[pd.DataFrame]:
+        Returns:
+            SeismicData: Filtered view of dataset.
         """
-        Access the normalized Source table.
-        """
-        path = self.file_path / "source.parquet" if self.file_path else None
-        if path and path.exists():
-            # todo: caching?
-            return pd.read_parquet(path)
-        return None
-
-    @property
-    def receiver_headers(self) -> Optional[pd.DataFrame]:
-        """
-        Access the normalized Receiver table.
-        """
-        path = self.file_path / "receiver.parquet" if self.file_path else None
-        if path and path.exists():
-            return pd.read_parquet(path)
-        return None
+        if not kwargs:
+            return self
+            
+        # Build Arrow expression / filter mask
+        mask = None
+        for col, val in kwargs.items():
+            if col not in self.table.column_names:
+                raise KeyError(f"Header column '{col}' not found in dataset schema")
+            col_array = self.table[col]
+            expr = pa.compute.equal(col_array, val)
+            mask = expr if mask is None else pa.compute.and_(mask, expr)
+            
+        filtered_table = self.table.filter(mask)
+        return SeismicData(filtered_table, metadata=self.metadata, source_path=self.source_path)
 
     def __getitem__(self, key: Union[int, slice]) -> 'SeismicData':
         """
-        Slice the dataset (lazy).
+        Slice the dataset along the trace dimension.
         
-        Returns a new SeismicData instance representing the view.
+        Returns a new SeismicData view.
         """
-        # Slice data (lazy)
-        new_data = self.data[key]
-        
-        # Update trace slice
-        # We need to compose the new slice 'key' with the existing '_trace_slice'
-        
-        current_start, current_stop, current_step = self._trace_slice.indices(len(self.header_store))
-        
         if isinstance(key, slice):
-            # Normalize key relative to the current view size
-            view_len = (current_stop - current_start + current_step - 1) // current_step
-            k_start, k_stop, k_step = key.indices(view_len)
-            
-            # Map back to absolute coordinates
-            new_start = current_start + k_start * current_step
-            new_stop = current_start + k_stop * current_step
-            new_step = current_step * k_step
-            
-            # Clamp stop to ensure we don't go beyond original bounds logic (indices handles this mostly)
-            # But we need to be careful about the stop condition in range logic vs slice logic
-            
-            new_slice = slice(new_start, new_stop, new_step)
-            
+            start, stop, step = key.indices(self.n_traces)
+            length = max(0, stop - start)
+            sliced_table = self.table.slice(start, length)
+            if step != 1 and len(sliced_table) > 0:
+                indices = pa.array(np.arange(0, len(sliced_table), step))
+                sliced_table = sliced_table.take(indices)
+            return SeismicData(sliced_table, metadata=self.metadata, source_path=self.source_path)
         elif isinstance(key, int):
-            # Single row view
-            # Normalize key
-            view_len = (current_stop - current_start + current_step - 1) // current_step
-            if key < 0: key += view_len
-            if key < 0 or key >= view_len:
+            if key < 0:
+                key += self.n_traces
+            if key < 0 or key >= self.n_traces:
                 raise IndexError("Trace index out of range")
-            
-            abs_idx = current_start + key * current_step
-            new_slice = slice(abs_idx, abs_idx + 1, 1)
-            
+            sliced_table = self.table.slice(key, 1)
+            return SeismicData(sliced_table, metadata=self.metadata, source_path=self.source_path)
         else:
-            raise TypeError("Invalid slice key")
-
-        return SeismicData(
-            new_data, 
-            self.header_store, 
-            self.sample_rate, 
-            self.file_path, 
-            _trace_slice=new_slice
-        )
+            raise TypeError("Index must be an integer or slice")
 
     def compute(self) -> Tuple[np.ndarray, pd.DataFrame]:
         """
-        Trigger computation and return in-memory objects.
+        Return the 2D trace amplitude array and headers DataFrame.
         """
-        return self.data.compute(), self.headers
-
-    def close(self):
-        """
-        Release resources.
-        """
-        if self.header_store:
-            self.header_store.close()
+        return self.data, self.headers
 
     @classmethod
-    def open(cls, path: Union[str, Path]) -> 'SeismicData':
+    def open(
+        cls,
+        source: Union[str, Path, io.BytesIO, pa.Buffer],
+        filters: Optional[List[Union[Tuple, List[Tuple]]]] = None
+    ) -> 'SeismicData':
         """
-        Open a seismic dataset from disk.
+        Open a single-Parquet dataset from disk file or in-memory buffer.
         
         Args:
-            path: Path to the dataset.
+            source: Path to .parquet file or in-memory byte buffer.
+            filters: Optional Parquet predicate pushdown filter list.
             
         Returns:
-            SeismicData: The loaded dataset.
+            SeismicData: The loaded dataset instance.
         """
-        from .reader import InternalFormatReader
-        reader = InternalFormatReader(path)
-        return reader.read()
-        
-    def save(self, path: Union[str, Path], overwrite: bool = False) -> None:
+        reader = InternalFormatReader(source)
+        table = reader.read_table(filters=filters)
+        metadata = reader.read_metadata()
+        source_path = str(source) if isinstance(source, (str, Path)) else None
+        return cls(table, metadata=metadata, source_path=source_path)
+
+    @classmethod
+    def from_buffer(cls, buffer: Union[bytes, io.BytesIO]) -> 'SeismicData':
         """
-        Save the seismic dataset to disk.
+        Construct SeismicData directly from an in-memory byte buffer (zero-disk I/O).
         
         Args:
-            path: Destination path.
-            overwrite: Whether to overwrite existing dataset.
+            buffer: In-memory bytes or BytesIO stream.
+            
+        Returns:
+            SeismicData instance.
         """
-        from .writer import InternalFormatWriter
-        writer = InternalFormatWriter(path, overwrite=overwrite)
+        return cls.open(buffer)
+
+    @classmethod
+    def create(
+        cls,
+        traces: np.ndarray,
+        headers: pd.DataFrame,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> 'SeismicData':
+        """
+        Create an in-memory SeismicData instance from trace arrays and headers.
         
-        # Write traces
-        writer.write_traces(self.data)
+        Args:
+            traces: 2D NumPy array (n_traces, n_samples).
+            headers: Pandas DataFrame of scalar headers.
+            metadata: Dataset metadata dict.
+            
+        Returns:
+            SeismicData instance.
+        """
+        buf = io.BytesIO()
+        writer = InternalFormatWriter(buf)
+        writer.write(traces, headers, metadata)
+        return cls.from_buffer(buf)
+
+    def save(
+        self,
+        destination: Union[str, Path, io.BytesIO],
+        overwrite: bool = True,
+        compression: str = "zstd"
+    ) -> Union[str, Path, io.BytesIO]:
+        """
+        Save the dataset to disk or an in-memory byte buffer.
         
-        # Write headers
-        # Currently writing all headers to trace_headers
-        # TODO: Support normalized header writing if self.headers is structured that way
-        writer.write_headers(trace_headers=self.headers)
+        Args:
+            destination: File path or BytesIO buffer.
+            overwrite: If True, overwrite existing destination file.
+            compression: Parquet compression algorithm ('zstd', 'snappy', etc.).
+            
+        Returns:
+            Destination path or buffer.
+        """
+        writer = InternalFormatWriter(destination, overwrite=overwrite)
+        return writer.write(
+            traces=self.data,
+            headers=self.headers,
+            metadata=self.metadata,
+            compression=compression
+        )
+
+    def to_buffer(self) -> io.BytesIO:
+        """
+        Export dataset to an in-memory BytesIO buffer (RAM-only).
         
-        # Write metadata
-        writer.write_metadata({'sample_rate': self.sample_rate})
+        Returns:
+            io.BytesIO containing valid Parquet dataset bytes.
+        """
+        buf = io.BytesIO()
+        self.save(buf)
+        buf.seek(0)
+        return buf
 
     def summary(self) -> str:
         """
-        Return a textual summary of the dataset (dimensions, geometry, key ranges).
-        Summarizes trace.parquet, source.parquet, and receiver.parquet if available.
+        Return a human-readable textual summary of the dataset.
         """
-        lines = []
-        lines.append(f"SeismicData Summary:")
-        lines.append(f"-------------------")
-        lines.append(f"Source: {self.file_path or 'Memory'}")
-        lines.append(f"Traces: {self.n_traces}")
-        lines.append(f"Samples: {self.n_samples}")
-        
-        # sample_rate is in seconds
-        us = self.sample_rate * 1_000_000.0
-        ms = self.sample_rate * 1_000.0
-        lines.append(f"Sample Rate: {us:.2f} us ({ms:.2f} ms)")
-        
-        duration = self.n_samples * self.sample_rate # seconds
-        lines.append(f"Length: {duration:.2f} s")
-        
-        # approximate size
-        size_bytes = self.n_traces * self.n_samples * 4 # float32
-        for unit in ['B', 'KB', 'MB', 'GB']:
-            if size_bytes < 1024 or unit == 'GB':
-                lines.append(f"Raw Data Size: {size_bytes:.2f} {unit}")
-                break
-            size_bytes /= 1024.0
-
-        def _append_stats(df: pd.DataFrame, table_name: str):
-            lines.append("")
-            lines.append(f"{table_name} Statistics ({len(df)} rows):")
-            
-            if df.empty:
-                lines.append("  (empty)")
-                return
-
-            for col in df.columns:
-                series = df[col]
-                try:
-                    # Convert to numeric if possible (handles string-encoded numbers)
-                    try:
-                        numeric = pd.to_numeric(series)
-                    except (ValueError, TypeError):
-                        numeric = series
-                    
-                    if pd.api.types.is_numeric_dtype(numeric):
-                        min_val = numeric.min()
-                        max_val = numeric.max()
-                        if pd.api.types.is_float_dtype(numeric):
-                             lines.append(f"  {col:<20}: {min_val:.2f} to {max_val:.2f}")
-                        else:
-                             lines.append(f"  {col:<20}: {min_val} to {max_val}")
-                    else:
-                        # Non-numeric
-                        n_unique = series.nunique()
-                        if n_unique < 5:
-                            vals = ", ".join(map(str, series.unique()))
-                            lines.append(f"  {col:<20}: {vals}")
-                        else:
-                            lines.append(f"  {col:<20}: {n_unique} unique values")
-                except Exception:
-                    lines.append(f"  {col:<20}: (error)")
-
-        # 1. Trace Headers (trace.parquet)
-        # Read all columns
-        trace_table = self.header_store.read_window(0, self.n_traces)
-        trace_df = trace_table.to_pandas()
-        _append_stats(trace_df, "Trace Headers (trace.parquet)")
-        
-        # 2. Source Headers (source.parquet)
-        if self.source_headers is not None:
-            _append_stats(self.source_headers, "Source Attributes (source.parquet)")
-            
-        # 3. Receiver Headers (receiver.parquet)
-        if self.receiver_headers is not None:
-            _append_stats(self.receiver_headers, "Receiver Attributes (receiver.parquet)")
-
+        lines = [
+            "SeismicData Summary",
+            "-------------------",
+            f"Source      : {self.source_path or 'In-Memory Buffer'}",
+            f"Traces      : {self.n_traces}",
+            f"Samples     : {self.n_samples}",
+            f"Sample Rate : {self.sample_rate * 1000.0:.2f} ms ({self.sample_rate:.4f} s)",
+            f"Duration    : {self.n_samples * self.sample_rate:.2f} s",
+            f"Raw Size    : {(self.n_traces * self.n_samples * 4) / (1024 * 1024):.2f} MB",
+            "",
+            "Header Columns:",
+            ", ".join([c for c in self.table.column_names if c != "samples"]) or "(None)"
+        ]
         return "\n".join(lines)
-
