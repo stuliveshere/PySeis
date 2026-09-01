@@ -1,13 +1,13 @@
 from typing import Union, List, Optional
 import pandas as pd
-from pyseis_io.models import SeismicData
+from pyseis_io.core.dataset import SeismicData
 
 def export_headers_to_gis(
     data: Union[SeismicData, pd.DataFrame],
     filename: str,
     format: str = 'gpkg',
     crs: str = "EPSG:4326",
-    geometry_cols: List[str] = ["source_coordinate_x", "source_coordinate_y"]
+    geometry_cols: List[str] = ["source_x", "source_y"]
 ) -> None:
     """
     Export seismic headers to a GIS format (e.g., GeoPackage).

@@ -44,10 +44,8 @@ def synthetic_data(tmp_path):
     # Write to internal format first to get a valid SeismicData on disk
     from pyseis_io.core.writer import InternalFormatWriter
     
-    path = tmp_path / "synthetic_internal"
+    path = tmp_path / "synthetic_internal.parquet"
     writer = InternalFormatWriter(path, overwrite=True)
-    writer.write_traces(data)
-    writer.write_headers(headers)
-    writer.write_metadata({"sample_rate": sample_rate})
+    writer.write(data, headers, metadata={"sample_rate": sample_rate})
     
     return path

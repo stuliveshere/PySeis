@@ -1,4 +1,5 @@
 import os
+import io
 import struct
 import yaml
 import numpy as np
@@ -206,104 +207,68 @@ class SEGYImporter(SeismicImporter):
         
         return out
 
-    def import_data(self, output_path: Union[str, Path], chunk_size: int = 1000, **kwargs) -> 'SeismicData':
+    def import_data(self, output_path: Union[str, Path, io.BytesIO], chunk_size: int = 1000, **kwargs) -> 'SeismicData':
         """
-        Convert SEGY to internal format.
+        Convert SEGY to single-Parquet internal dataset format.
         """
         if self.headers is None:
-             raise RuntimeError("Headers not loaded. Call scan() first.")
+            raise RuntimeError("Headers not loaded. Call scan() first.")
              
         # Metadata
-        dt_micros = self._dt if self._dt > 0 else 1000 # default 1ms
+        dt_micros = self._dt if self._dt > 0 else 1000  # default 1ms
         sample_rate = dt_micros / 1_000_000.0
         
-        writer = InternalFormatWriter(output_path, overwrite=True)
-        writer.write_metadata({"sample_rate": sample_rate})
+        # Apply column mapping to headers
+        mapped_headers = self.headers.rename(columns=self.mapping)
         
-        # Map and Write Headers
-        writer.write_headers(self.headers, mapping=self.mapping)
-        
-        # Initialize Data
-        total_shape = (self._trace_count, self._ns)
-        writer.initialize_data(
-            shape=total_shape, 
-            chunks=(chunk_size, self._ns),
-            dtype=np.float32
-        )
-        
-        # Read Logic
+        # Read trace amplitude data
         data_start = self._ebcdic_header_size + self._binary_header_size
         
-        # Handle format codes
         sample_bytes = 4
         if self._format_code == 3: sample_bytes = 2
         elif self._format_code == 8: sample_bytes = 1
         elif self._format_code == 6: sample_bytes = 8
 
+        all_traces = np.zeros((self._trace_count, self._ns), dtype=np.float32)
+
         with open(self.segy_path, 'rb') as f:
             for i in range(0, self._trace_count, chunk_size):
                 count = min(chunk_size, self._trace_count - i)
-                trace_len_bytes = self._ns * sample_bytes
-                
-                # We can't use simple read because of headers between traces.
-                # Must seek for each trace OR read block and strip headers?
-                # Reading block and stripping in memory is faster if chunk isn't too huge.
-                # Stride: header + data
-                
                 chunk_stride_bytes = count * self._trace_stride
                 start_offset = data_start + i * self._trace_stride
                 
-                # Read raw chunk (containing headers + data for 'count' traces)
                 f.seek(start_offset)
                 raw_chunk = f.read(chunk_stride_bytes)
                 
-                # Use numpy stride tricks to extract data parts
-                # Create a view of the raw chunk
-                # We need to skip header bytes every stride
-                
-                # View as uint8 for byte manipulation
                 chunk_arr = np.frombuffer(raw_chunk, dtype='uint8')
-                
-                # Reshape to (count, stride)
-                # Be careful if last chunk is partial - but we read exactly chunk_stride_bytes or EOF
                 if len(chunk_arr) < chunk_stride_bytes:
-                     # This shouldn't happen if file size check was correct, but handling safety
-                     actual_count = len(chunk_arr) // self._trace_stride
-                     chunk_arr = chunk_arr[:actual_count*self._trace_stride]
-                     chunk_arr = chunk_arr.reshape((actual_count, self._trace_stride))
+                    actual_count = len(chunk_arr) // self._trace_stride
+                    chunk_arr = chunk_arr[:actual_count * self._trace_stride]
+                    chunk_arr = chunk_arr.reshape((actual_count, self._trace_stride))
                 else:
-                     chunk_arr = chunk_arr.reshape((count, self._trace_stride))
+                    chunk_arr = chunk_arr.reshape((count, self._trace_stride))
                 
-                # Extract data part: from header_size to end
                 data_part = chunk_arr[:, self._trace_header_size:]
-                
-                # Now interpret data_part based on format
-                # Need to flatten to interpret types, then reshape validly?
-                # data_part is (count, ns * sample_bytes) uint8
                 flat_bytes = data_part.flatten()
                 
-                if self._format_code == 1: # IBM Float
-                     # View as Big Endian Uint32
-                     u32 = flat_bytes.view('>u4')
-                     # Convert
-                     traces = ibm2ieee(u32)
-                elif self._format_code == 5: # IEEE Float
-                     traces = flat_bytes.view('>f4')
-                elif self._format_code == 2: # Int32
-                     traces = flat_bytes.view('>i4').astype(np.float32)
-                elif self._format_code == 3: # Int16
-                     traces = flat_bytes.view('>i2').astype(np.float32)
-                elif self._format_code == 8: # Int8
-                     traces = flat_bytes.view('i1').astype(np.float32)
+                if self._format_code == 1:  # IBM Float
+                    u32 = flat_bytes.view('>u4')
+                    traces = ibm2ieee(u32)
+                elif self._format_code == 5:  # IEEE Float
+                    traces = flat_bytes.view('>f4')
+                elif self._format_code == 2:  # Int32
+                    traces = flat_bytes.view('>i4').astype(np.float32)
+                elif self._format_code == 3:  # Int16
+                    traces = flat_bytes.view('>i2').astype(np.float32)
+                elif self._format_code == 8:  # Int8
+                    traces = flat_bytes.view('i1').astype(np.float32)
                 else:
-                     # Fallback or error
-                     # Assuming IEEE for unknown
-                     traces = flat_bytes.view('>f4') 
+                    traces = flat_bytes.view('>f4')
                 
-                # Reshape to (count, ns)
-                traces_out = traces.reshape((count, self._ns))
-                
-                writer.write_data_chunk(traces_out, start_trace=i)
+                all_traces[i:i + count, :] = traces.reshape((count, self._ns))
+
+        writer = InternalFormatWriter(output_path, overwrite=True)
+        writer.write(all_traces, mapped_headers, metadata={"sample_rate": sample_rate})
 
         from pyseis_io.core.dataset import SeismicData
         return SeismicData.open(output_path)

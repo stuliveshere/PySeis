@@ -13,6 +13,13 @@ import pyarrow.parquet as pq
 from .reader import InternalFormatReader
 from .writer import InternalFormatWriter
 
+class SeismicArray(np.ndarray):
+    """
+    Subclass of np.ndarray providing a no-op .compute() method for backwards-compatibility.
+    """
+    def compute(self):
+        return np.asarray(self)
+
 class SeismicData:
     """
     High-level, unified container for seismic trace data, headers, and metadata.
@@ -83,11 +90,12 @@ class SeismicData:
         Zero-copy view backed by PyArrow memory buffers.
         """
         if "samples" not in self.table.column_names or len(self.table) == 0:
-            return np.empty((0, self.n_samples), dtype=np.float32)
-            
-        chunked = self.table["samples"].combine_chunks()
-        values = chunked.values.to_numpy()
-        return values.reshape(self.n_traces, self.n_samples)
+            arr = np.empty((0, self.n_samples), dtype=np.float32)
+        else:
+            chunked = self.table["samples"].combine_chunks()
+            values = chunked.values.to_numpy()
+            arr = values.reshape(self.n_traces, self.n_samples)
+        return arr.view(SeismicArray)
 
     @property
     def headers(self) -> pd.DataFrame:
@@ -249,19 +257,25 @@ class SeismicData:
         buf.seek(0)
         return buf
 
+    def close(self) -> None:
+        """
+        Release any open resources (no-op for Arrow table views).
+        """
+        pass
+
     def summary(self) -> str:
         """
         Return a human-readable textual summary of the dataset.
         """
         lines = [
-            "SeismicData Summary",
+            "SeismicData Summary:",
             "-------------------",
-            f"Source      : {self.source_path or 'In-Memory Buffer'}",
-            f"Traces      : {self.n_traces}",
-            f"Samples     : {self.n_samples}",
-            f"Sample Rate : {self.sample_rate * 1000.0:.2f} ms ({self.sample_rate:.4f} s)",
-            f"Duration    : {self.n_samples * self.sample_rate:.2f} s",
-            f"Raw Size    : {(self.n_traces * self.n_samples * 4) / (1024 * 1024):.2f} MB",
+            f"Source: {self.source_path or 'In-Memory Buffer'}",
+            f"Traces: {self.n_traces}",
+            f"Samples: {self.n_samples}",
+            f"Sample Rate: {self.sample_rate * 1e6:.2f} us ({self.sample_rate * 1000.0:.2f} ms / {self.sample_rate:.4f} s)",
+            f"Duration: {self.n_samples * self.sample_rate:.2f} s",
+            f"Raw Size: {(self.n_traces * self.n_samples * 4) / (1024 * 1024):.2f} MB",
             "",
             "Header Columns:",
             ", ".join([c for c in self.table.column_names if c != "samples"]) or "(None)"

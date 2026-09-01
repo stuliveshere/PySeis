@@ -1,15 +1,13 @@
 # Default Mapping: SEGY Header Code -> SeisData Column Name
 
 # Trace Identification
-tracl: trace_id
-tracr: trace_sequence_number
 fldr: file_number
+shot_number: shot_number
 tracf: channel_number
 ep: source_index
-cdp: cdp_id
+cdp: cdp
 cdpt: cdp_trace_number
-trid: trace_identification_code
-duse: data_use
+trid: trace_code
 offset: offset
 
 # Coordinates
@@ -19,12 +17,10 @@ gx: receiver_x
 gy: receiver_y
 counit: coordinate_units
 
-# Elevations
+# Elevations & Geometry
 gelev: receiver_elevation
 selev: source_elevation
 sdepth: source_depth
-gdel: receiver_datum_elevation
-sdel: source_datum_elevation
 scalel: elevation_scalar
 scalco: coordinate_scalar
 
@@ -32,18 +28,13 @@ scalco: coordinate_scalar
 ns: num_samples
 dt: sample_rate
 delrt: recording_delay
-mute: mute_end_time
-muts: mute_start_time
+mute: mute_end
+muts: mute_start
 
 # Statics
 sstat: source_static
 gstat: receiver_static
 tstat: total_static
 
-# Other
-year: year
-day: day_of_year
-hour: hour
-minute: minute
-sec: second
+# Quality & Weights
 trwf: trace_weighting_factor

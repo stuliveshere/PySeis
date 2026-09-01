@@ -1,4 +1,5 @@
 import os
+import io
 import struct
 import yaml
 import numpy as np
@@ -276,77 +277,36 @@ class SUImporter(SeismicImporter):
         return out
 
 
-    def import_data(self, output_path: Union[str, Path], chunk_size: int = 1000, **kwargs) -> 'SeismicData':
+    def import_data(self, output_path: Union[str, Path, io.BytesIO], chunk_size: int = 1000, **kwargs) -> 'SeismicData':
         """
-        Convert the SU file to internal format using the (possibly modified) headers.
-        
-        Args:
-            output_path: Destination path for .seis dataset.
-            chunk_size: Number of traces to process at a time. Default 1000.
+        Convert the SU file to single-Parquet internal dataset format.
         """
         if self.headers is None:
             raise RuntimeError("Headers not loaded. Call scan() first.")
             
-        # Validation checks
         if len(self.headers) != self._initial_trace_count:
-             raise ValueError(f"Header count mismatch: Expected {self._initial_trace_count}, got {len(self.headers)}. Dropping traces is not supported.")
+            raise ValueError(f"Header count mismatch: Expected {self._initial_trace_count}, got {len(self.headers)}.")
              
-        # Prepare Metadata
-        # Use first trace sample rate
-        sample_rate = self._dt / 1_000_000.0 # micros -> seconds
+        sample_rate = self._dt / 1_000_000.0  # micros -> seconds
+        mapped_headers = self.headers.rename(columns=self.mapping)
         
-        # Initialize Writer
-        writer = InternalFormatWriter(output_path, overwrite=True)
-        writer.write_metadata({"sample_rate": sample_rate})
+        all_traces = np.zeros((self._initial_trace_count, self._ns), dtype=np.float32)
         
-        # Write Headers
-        # Ensure only valid schema columns are written? Writer handles validation.
-        # But we need to ensure we pass a DataFrame compatible with schema.
-        # SUReader produces 'trace_sequence_number', 'sample_rate' etc.
-        writer.write_headers(self.headers, mapping=self.mapping)
-        
-        # Initialize Trace Data
-        # We know total shape from _initial_trace_count and _ns
-        total_shape = (self._initial_trace_count, self._ns)
-        
-        # Optimize chunking: Zarr chunks should be aligned with our write chunks if possible for speed
-        writer.initialize_data(
-            shape=total_shape,
-            chunks=(chunk_size, self._ns),
-            dtype=np.float32
-        )
-        
-        # Write Traces
         with open(self.su_path, 'rb') as f:
-            for i in range(0, self._initial_trace_count, chunk_size):
-                count = min(chunk_size, self._initial_trace_count - i)
+            for i in range(self._initial_trace_count):
+                offset = i * self._trace_stride + self._header_size
+                f.seek(offset)
+                data_bytes = f.read(self._ns * 4)
                 
-                # Pre-allocate array
-                traces = np.zeros((count, self._ns), dtype=np.float32)
+                trace_data = np.frombuffer(data_bytes, dtype=np.float32)
+                sys_endian = '<' if np.little_endian else '>'
+                if self._endian != sys_endian:
+                    trace_data = trace_data.byteswap()
+                    
+                all_traces[i, :] = trace_data
                 
-                # Optimize read loop if needed, but this is readable
-                for j in range(count):
-                    trace_idx = i + j
-                    # Calculate offset
-                    offset = trace_idx * self._trace_stride + self._header_size # Skip header
-                    
-                    f.seek(offset)
-                    data_bytes = f.read(self._ns * 4)
-                    
-                    # Unpack
-                    trace_data = np.frombuffer(data_bytes, dtype=np.float32)
-                    
-                    # Handle byteswap
-                    sys_endian = '<' if np.little_endian else '>'
-                    if self._endian != sys_endian:
-                        trace_data = trace_data.byteswap()
-                        
-                    traces[j, :] = trace_data
-                    
-                writer.write_data_chunk(traces, start_trace=i)
-                
-        print(f"Conversion complete: {output_path}")
+        writer = InternalFormatWriter(output_path, overwrite=True)
+        writer.write(all_traces, mapped_headers, metadata={"sample_rate": sample_rate})
         
-        # Return opened dataset
         from pyseis_io.core.dataset import SeismicData
         return SeismicData.open(output_path)
