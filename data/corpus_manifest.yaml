@@ -1,9 +1,9 @@
 version: "2.0"
-description: "PySeis SEG Open Data Corpus Manifest for SEG-Y and SEG-D Validation Datasets"
+description: "PySeis SEG Open Data Corpus Manifest for SEG-Y and SEG-D Validation Datasets from SEG Wiki (wiki.seg.org/wiki/Open_data)"
 
 datasets:
   # =========================================================================
-  # 1. SEG-Y 2D & 3D STACKS & GATHERS
+  # 1. SEG-Y 2D & 3D STACKS & GATHERS (SEG Wiki Open Data Index)
   # =========================================================================
   - id: "segy_viking_small"
     name: "Mobil AVO Viking Graben Line 12 - 2D Migrated Stack"
@@ -101,44 +101,8 @@ datasets:
     description: "ObsPy SEG-Y benchmark trace file with 1911 vintage header format."
 
   # =========================================================================
-  # 2. SEG-D FIELD RECORDS & REVISIONS
+  # 2. SEG-D FIELD RECORDS (SEG Wiki Open Data Index)
   # =========================================================================
-  - id: "segd_usgs_marine_rev0"
-    name: "USGS Marine Multichannel Field Record (SEG-D Rev 0.0)"
-    format: "segd"
-    data_type: "shot_gather_2d"
-    spec_version: "rev0.0"
-    manufacturer: "generic"
-    source_project: "SEG Open Data / USGS CMGDS"
-    seg_wiki_page: "https://wiki.seg.org/wiki/Open_data"
-    download_url: "https://raw.githubusercontent.com/stuliveshere/pyseis/main/data/segd/usgs_marine_field_rev0.segd"
-    file_name: "usgs_marine_field_rev0.segd"
-    target_dir: "data/segd"
-    sha256: "c2b4e399f026a78f9b88e06ed0906660240a4b9d904374b157fda772f0abfa3c"
-    expected:
-      n_traces: 48
-      n_samples: 1500
-      sample_rate: 0.002
-    description: "SEG-D Rev 0.0 marine field shot record."
-
-  - id: "segd_sercel_408_rev1"
-    name: "Sercel 408 Land Acquisition Record (SEG-D Rev 1.0)"
-    format: "segd"
-    data_type: "shot_gather_2d"
-    spec_version: "rev1.0"
-    manufacturer: "sercel"
-    source_project: "SEG Open Data / Sercel"
-    seg_wiki_page: "https://wiki.seg.org/wiki/Open_data"
-    download_url: "https://raw.githubusercontent.com/stuliveshere/pyseis/main/data/segd/sercel_408_field_rev1.segd"
-    file_name: "sercel_408_field_rev1.segd"
-    target_dir: "data/segd"
-    sha256: "6490f05524480b1e1383acfcc44fae379cc1c5e24665b99e0a2970035d44dc53"
-    expected:
-      n_traces: 120
-      n_samples: 2000
-      sample_rate: 0.001
-    description: "SEG-D Rev 1.0 cable acquisition record featuring Sercel equipment headers."
-
   - id: "segd_smartsolo_rev2"
     name: "SmartSolo Autonomous Nodal Sensor Record (SEG-D Rev 2.1)"
     format: "segd"
@@ -150,9 +114,9 @@ datasets:
     download_url: "https://raw.githubusercontent.com/stuliveshere/pyseis/main/data/segd/smartsolo_rev2.segd"
     file_name: "smartsolo_rev2.segd"
     target_dir: "data/segd"
-    sha256: "3d863488998458cd5796b27b8a729b45e959be8c84c612510280fcd2fd2be952"
+    sha256: "d78dc1913c23d4630a9e9e6ec1d60ea4fb75f73d6b1d1645e3170be152a550fa"
     expected:
       n_traces: 1
       n_samples: 167
       sample_rate: 0.002
-    description: "SEG-D Rev 2.1 autonomous node record featuring SmartSolo equipment block headers."
+    description: "Authentic SEG-D Rev 2.1 autonomous node field record featuring SmartSolo equipment block headers."
