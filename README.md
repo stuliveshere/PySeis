@@ -1,10 +1,10 @@
-# pyseis-io
+# pyseis
 
 A standalone I/O library for seismic data featuring a unified, high-performance **Single-Parquet dataset format** with support for industry-standard seismic formats.
 
 ## Overview
 
-`pyseis-io` provides a modern, simplified storage engine for seismic data:
+`pyseis` provides a modern, simplified storage engine for seismic data:
 
 - **Single-Parquet Format**: Entire dataset stored in a single `.parquet` file (or in-memory byte buffer)
 - **Zero-Copy Trace Access**: Fixed-length trace vectors stored in Arrow `FixedSizeList` columns for instant 2D NumPy array conversion
@@ -33,7 +33,7 @@ pip install -e .
 ```python
 import numpy as np
 import pandas as pd
-from pyseis_io.core.writer import InternalFormatWriter
+from pyseis.core.writer import InternalFormatWriter
 
 # Generate synthetic seismic amplitudes (100 traces x 2000 samples)
 traces = np.random.randn(100, 2000).astype(np.float32)
@@ -59,7 +59,7 @@ writer.write(
 ### Reading and Gather Filtering
 
 ```python
-from pyseis_io.core.dataset import SeismicData
+from pyseis.core.dataset import SeismicData
 
 # Open dataset (reads only tiny file footer instantly)
 sd = SeismicData.open("my_dataset.parquet")
@@ -81,7 +81,7 @@ headers_df = shot_3.headers
 
 ```python
 import io
-from pyseis_io.core.dataset import SeismicData
+from pyseis.core.dataset import SeismicData
 
 # Export dataset to an in-memory byte buffer
 ram_buffer = sd.to_buffer()
@@ -112,7 +112,7 @@ my_dataset.parquet
 ## Package Structure
 
 ```
-pyseis_io/
+pyseis/
 ├── core/                  # Core single-Parquet engine
 │   ├── dataset.py         # SeismicData interface
 │   ├── reader.py          # InternalFormatReader & predicate pushdown

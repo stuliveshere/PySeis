@@ -3,7 +3,7 @@ Tests for SEG-Y YAML Schema engine, endianness auto-detection, and revision mana
 """
 
 import pytest
-from pyseis_io.segy.schema import SEGYSchemaManager
+from pyseis.segy.schema import SEGYSchemaManager
 
 def test_segy_schema_load():
     manager = SEGYSchemaManager()

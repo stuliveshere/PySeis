@@ -1,5 +1,5 @@
 """
-Footer metadata management for pyseis-io single-Parquet datasets.
+Footer metadata management for pyseis single-Parquet datasets.
 
 Handles encoding, decoding, attaching, and extracting JSON dataset metadata
 from Parquet file footers (key_value_metadata).

@@ -1,6 +1,6 @@
-# **pyseis-io: Single-Parquet File Format Architecture & API Documentation**
+# **pyseis: Single-Parquet File Format Architecture & API Documentation**
 
-`pyseis-io` defines a **lean, unified, high-performance dataset format** for seismic data built on top of **Apache Arrow and Parquet**:
+`pyseis` defines a **lean, unified, high-performance dataset format** for seismic data built on top of **Apache Arrow and Parquet**:
 
 * **Single-File / Single-Buffer Storage**: A complete seismic dataset resides in a single `.parquet` file (or an in-memory byte buffer).
 * **Fixed-Length Vector Traces**: Amplitudes are stored in a `FixedSizeList(Float32, n_samples)` column for zero-copy 2D NumPy matrix access.
@@ -13,7 +13,7 @@
 
 # 1. Dataset Layout & Storage Engine
 
-Unlike traditional multi-file formats or complex directory trees, a `pyseis-io` dataset is stored as a single self-contained Parquet file:
+Unlike traditional multi-file formats or complex directory trees, a `pyseis` dataset is stored as a single self-contained Parquet file:
 
 ```
 <dataset_name>.parquet
@@ -102,7 +102,7 @@ Reading dataset metadata requires reading **only the tiny file footer** without 
 
 ## **3.1 SeismicData**
 
-Defined in `src/pyseis_io/core/dataset.py`
+Defined in `src/pyseis/core/dataset.py`
 
 `SeismicData` is the primary high-level interface for inspecting, filtering, and writing seismic datasets.
 
@@ -151,12 +151,12 @@ buf = sd.to_buffer()
 
 ## **3.2 InternalFormatWriter**
 
-Defined in `src/pyseis_io/core/writer.py`
+Defined in `src/pyseis/core/writer.py`
 
 Responsible for building PyArrow Tables with `FixedSizeList` trace arrays, attaching footer metadata, and serializing to disk or RAM buffers.
 
 ```python
-from pyseis_io.core.writer import InternalFormatWriter
+from pyseis.core.writer import InternalFormatWriter
 
 writer = InternalFormatWriter("dataset.parquet")
 writer.write(
@@ -170,12 +170,12 @@ writer.write(
 
 ## **3.3 InternalFormatReader**
 
-Defined in `src/pyseis_io/core/reader.py`
+Defined in `src/pyseis/core/reader.py`
 
 Responsible for fast header-only inspection, predicate pushdown gather loading, and extracting zero-copy 2D NumPy array views from `FixedSizeList` trace columns.
 
 ```python
-from pyseis_io.core.reader import InternalFormatReader
+from pyseis.core.reader import InternalFormatReader
 
 reader = InternalFormatReader("dataset.parquet")
 metadata = reader.read_metadata()  # Reads footer only
@@ -186,11 +186,11 @@ sd = reader.read()                 # Full or filtered SeismicData
 
 # 4. Zero-Disk & In-Memory Streaming Workflows
 
-`pyseis-io` supports diskless in-memory format conversions and network streaming:
+`pyseis` supports diskless in-memory format conversions and network streaming:
 
 ```python
 import io
-import pyseis_io as ps
+import pyseis as ps
 
 # Read SEG-Y file directly in RAM
 segy_reader = ps.SEGYReader("raw_data.sgy")

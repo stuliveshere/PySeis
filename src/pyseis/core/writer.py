@@ -1,5 +1,5 @@
 """
-Internal format writer for pyseis-io single-Parquet datasets.
+Internal format writer for pyseis single-Parquet datasets.
 """
 
 import io

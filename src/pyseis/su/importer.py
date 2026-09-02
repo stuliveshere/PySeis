@@ -7,15 +7,15 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict, Any, Optional, Union, Tuple
 
-from pyseis_io.core.writer import InternalFormatWriter
-from pyseis_io.base import SeismicImporter
-from pyseis_io.core.format_parser import FormatParser
+from pyseis.core.writer import InternalFormatWriter
+from pyseis.base import SeismicImporter
+from pyseis.core.format_parser import FormatParser
 
 # Mapping SU headers to SeisData schema
 # Key: SU header name (from su.yaml) -> Value: SeisData column name
 class SUImporter(SeismicImporter):
     """
-    Reader for Seismic Unix files that converts to pyseis-io internal format.
+    Reader for Seismic Unix files that converts to pyseis internal format.
     Supports 'Scan -> Modify -> Convert' workflow.
     """
     
@@ -26,9 +26,9 @@ class SUImporter(SeismicImporter):
         Args:
             path: Path to the SU file.
             header_def: Optional path to a YAML file defining the SU header structure.
-                        Defaults to src/pyseis_io/su/su_format.yaml.
+                        Defaults to src/pyseis/su/su_format.yaml.
             mapping_path: Optional path to a YAML file defining SU->Core mapping.
-                          Defaults to src/pyseis_io/su/header_mapping.yaml.
+                          Defaults to src/pyseis/su/header_mapping.yaml.
         """
         self.su_path = Path(path)
         if not self.su_path.exists():
@@ -308,5 +308,5 @@ class SUImporter(SeismicImporter):
         writer = InternalFormatWriter(output_path, overwrite=True)
         writer.write(all_traces, mapped_headers, metadata={"sample_rate": sample_rate})
         
-        from pyseis_io.core.dataset import SeismicData
+        from pyseis.core.dataset import SeismicData
         return SeismicData.open(output_path)

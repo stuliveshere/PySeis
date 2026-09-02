@@ -9,9 +9,9 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from pyseis_io.segy.importer import SEGYImporter
-from pyseis_io.segy.exporter import SEGYExporter
-from pyseis_io.core.dataset import SeismicData
+from pyseis.segy.importer import SEGYImporter
+from pyseis.segy.exporter import SEGYExporter
+from pyseis.core.dataset import SeismicData
 
 def test_segy_export(synthetic_data, tmp_path):
     """Test exporting internal format to SEGY."""
@@ -70,7 +70,7 @@ def test_segy_ibm_float():
     Test IBM float conversion.
     This test verifies the ibm2ieee function from utils.
     """
-    from pyseis_io.utils import ibm2ieee
+    from pyseis.utils import ibm2ieee
     
     # Known IBM float: 0x42640000 = 100.0 in IBM float
     ibm_val = np.array([0x42640000], dtype=np.uint32)

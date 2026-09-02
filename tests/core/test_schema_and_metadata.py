@@ -3,14 +3,14 @@ import pyarrow as pa
 import pandas as pd
 import pytest
 
-from pyseis_io.core.footer_metadata import (
+from pyseis.core.footer_metadata import (
     encode_footer_metadata,
     decode_footer_metadata,
     attach_footer_metadata,
     read_footer_metadata,
     METADATA_KEY
 )
-from pyseis_io.core.schema import (
+from pyseis.core.schema import (
     get_trace_vector_type,
     build_dataset_schema,
     DEFAULT_HEADER_TYPES

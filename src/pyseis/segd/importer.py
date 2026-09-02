@@ -1,5 +1,5 @@
 """
-High-Level SEGDImporter for importing external SEG-D files into pyseis-io single-Parquet datasets.
+High-Level SEGDImporter for importing external SEG-D files into pyseis single-Parquet datasets.
 """
 
 from __future__ import annotations
@@ -10,9 +10,9 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 import pandas as pd
 
-from pyseis_io.base import SeismicImporter
-from pyseis_io.core.writer import InternalFormatWriter
-from pyseis_io.core.dataset import SeismicData
+from pyseis.base import SeismicImporter
+from pyseis.core.writer import InternalFormatWriter
+from pyseis.core.dataset import SeismicData
 
 from .reader import SEGDReader
 from .scanner import CorpusScanner
@@ -21,7 +21,7 @@ from .schema import SchemaManager, EffectiveSchema
 
 class SEGDImporter(SeismicImporter):
     """
-    Reader and importer for SEG-D files converting into pyseis-io internal .seis format.
+    Reader and importer for SEG-D files converting into pyseis internal .seis format.
     Supports auto-detecting schemas, custom byte mappings, multi-file corpus scanning,
     and global coordinate reference subtractions.
     """

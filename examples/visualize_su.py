@@ -5,11 +5,11 @@ from pathlib import Path
 import tempfile
 import shutil
 
-# Ensure pyseis_io is in path if running from source root
+# Ensure pyseis is in path if running from source root
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from pyseis_io.su.importer import SUImporter
-from pyseis_io.visualization.viewer import SeismicViewer
+from pyseis.su.importer import SUImporter
+from pyseis.visualization.viewer import SeismicViewer
 
 def main():
     parser = argparse.ArgumentParser(description="Visualize an SU file using PySeis-IO")
@@ -42,7 +42,7 @@ def main():
         
         try:
             # sd is already opened
-            # from pyseis_io.core.dataset import SeismicData # No longer needed here
+            # from pyseis.core.dataset import SeismicData # No longer needed here
             print(sd.summary())
             sd.close() # Close to release for viewer (though viewer re-opens it)
             

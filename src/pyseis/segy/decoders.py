@@ -5,7 +5,7 @@ Supports IBM float (1), Int32 (2), Int16 (3), IEEE float (5), Int8 (8), and IEEE
 
 from typing import Callable, Dict
 import numpy as np
-from pyseis_io.utils import ibm2ieee, ieee2ibm
+from pyseis.utils import ibm2ieee, ieee2ibm
 
 def decode_ibm_float(raw_bytes: bytes, n_samples: int, endian: str = ">") -> np.ndarray:
     """Decode 32-bit IBM Float (format code 1)."""

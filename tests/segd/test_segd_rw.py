@@ -7,14 +7,14 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from pyseis_io.segd import (
+from pyseis.segd import (
     SEGDWriter,
     SEGDReader,
     SEGDImporter,
     SEGDExporter,
     CorpusScanner
 )
-from pyseis_io.core.dataset import SeismicData
+from pyseis.core.dataset import SeismicData
 
 def test_segd_write_and_read(tmp_path):
     segd_path = tmp_path / "test_shot.segd"

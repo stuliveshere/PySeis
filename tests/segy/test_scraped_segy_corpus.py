@@ -7,8 +7,8 @@ import pytest
 import numpy as np
 from pathlib import Path
 
-from pyseis_io.segy import SEGYReader, SEGYImporter, SEGYExporter
-from pyseis_io.core.dataset import SeismicData
+from pyseis.segy import SEGYReader, SEGYImporter, SEGYExporter
+from pyseis.core.dataset import SeismicData
 
 def get_scraped_segy_files():
     data_dir = Path(__file__).parent.parent.parent / "data" / "segy"

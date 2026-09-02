@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from pyseis_io.core.dataset import SeismicData
+from pyseis.core.dataset import SeismicData
 
 def test_seismic_data_create_and_properties():
     traces = np.random.randn(30, 400).astype(np.float32)

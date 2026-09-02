@@ -14,7 +14,7 @@ from matplotlib.widgets import Button
 # Add src to path using absolute resolve
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from pyseis_io.segy import SEGYReader, SEGYFillPlan
+from pyseis.segy import SEGYReader, SEGYFillPlan
 
 class SEGYViewer:
     def __init__(self, data_dir: Path):

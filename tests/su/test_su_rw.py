@@ -10,9 +10,9 @@ import pandas as pd
 import yaml
 from pathlib import Path
 
-from pyseis_io.su.importer import SUImporter
-from pyseis_io.su.exporter import SUExporter
-from pyseis_io.core.dataset import SeismicData
+from pyseis.su.importer import SUImporter
+from pyseis.su.exporter import SUExporter
+from pyseis.core.dataset import SeismicData
 
 @pytest.fixture
 def synthetic_data_dummy():

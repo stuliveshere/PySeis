@@ -1,11 +1,11 @@
 """
-SU Writer for exporting pyseis-io internal format to Seismic Unix files.
+SU Writer for exporting pyseis internal format to Seismic Unix files.
 """
 
 import os
 import struct
 """
-SU Writer for exporting pyseis-io internal format to Seismic Unix files.
+SU Writer for exporting pyseis internal format to Seismic Unix files.
 """
 
 import os
@@ -16,10 +16,10 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict, Any, Optional, Union
 
-from pyseis_io.core.dataset import SeismicData
-from pyseis_io.core.writer import InternalFormatWriter
-from pyseis_io.base import SeismicExporter
-from pyseis_io.core.format_parser import FormatParser
+from pyseis.core.dataset import SeismicData
+from pyseis.core.writer import InternalFormatWriter
+from pyseis.base import SeismicExporter
+from pyseis.core.format_parser import FormatParser
 
 class SUExporter(SeismicExporter):
     """
@@ -31,9 +31,9 @@ class SUExporter(SeismicExporter):
         Initialize the SU Writer.
         
         Args:
-            seismic_data: SeismicData object or path to the input pyseis-io dataset.
+            seismic_data: SeismicData object or path to the input pyseis dataset.
             header_def: Optional path to a YAML file defining the SU header structure.
-                        Defaults to src/pyseis_io/su/su_format.yaml.
+                        Defaults to src/pyseis/su/su_format.yaml.
         """
         if isinstance(seismic_data, (str, Path)):
              self.seismic_data_path = Path(seismic_data)

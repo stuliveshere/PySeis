@@ -4,7 +4,7 @@ Tests for 5-layer YAML Schema engine, merging, and auto-detection.
 
 import pytest
 from pathlib import Path
-from pyseis_io.segd.schema import SchemaManager
+from pyseis.segd.schema import SchemaManager
 
 def test_schema_load_effective():
     manager = SchemaManager()

@@ -1,5 +1,5 @@
 """
-High-Level SEGYExporter for exporting pyseis-io internal datasets into SEG-Y files.
+High-Level SEGYExporter for exporting pyseis internal datasets into SEG-Y files.
 """
 
 from __future__ import annotations
@@ -9,13 +9,13 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 import pandas as pd
 
-from pyseis_io.base import SeismicExporter
-from pyseis_io.core.dataset import SeismicData
+from pyseis.base import SeismicExporter
+from pyseis.core.dataset import SeismicData
 from .writer import SEGYWriter
 
 class SEGYExporter(SeismicExporter):
     """
-    Writer for exporting pyseis-io internal .seis datasets to SEG-Y files.
+    Writer for exporting pyseis internal .seis datasets to SEG-Y files.
     """
 
     def __init__(

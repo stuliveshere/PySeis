@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import shutil
 
-from pyseis_io.su import SUImporter, SUExporter
-from pyseis_io.segy import SEGYImporter, SEGYExporter
+from pyseis.su import SUImporter, SUExporter
+from pyseis.segy import SEGYImporter, SEGYExporter
 
 def main():
     # Setup paths
@@ -19,8 +19,8 @@ def main():
     # leveraging SUExporter to create a valid SU file from scratch via internal format for demo
     # Or just assume input.su exists? The prompt said "reading in a su". 
     # I'll create a dummy one first to make the script self-contained.
-    from pyseis_io.core.writer import InternalFormatWriter
-    from pyseis_io.core.dataset import SeismicData
+    from pyseis.core.writer import InternalFormatWriter
+    from pyseis.core.dataset import SeismicData
     import pandas as pd
     
     temp_seis = base_dir / "temp_source.seis"

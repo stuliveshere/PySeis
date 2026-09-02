@@ -58,7 +58,7 @@ class SEGYWriter:
         while len(lines) < 40:
             idx = len(lines) + 1
             if idx == 1:
-                lines.append(f"C{idx:02d} SEG-Y Output from pyseis-io")
+                lines.append(f"C{idx:02d} SEG-Y Output from pyseis")
             else:
                 lines.append(f"C{idx:02d}")
 

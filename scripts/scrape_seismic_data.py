@@ -16,7 +16,7 @@ from typing import List, Set, Union, Optional
 # Add src to path using absolute resolve
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from pyseis_io.segd.schema import bcd_digits
+from pyseis.segd.schema import bcd_digits
 
 SEGY_EXTENSIONS: Set[str] = {".segy", ".sgy"}
 SEGD_EXTENSIONS: Set[str] = {".segd", ".sgd", ".raw", ".dat"}

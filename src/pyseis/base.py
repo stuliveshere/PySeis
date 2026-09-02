@@ -4,11 +4,11 @@ from pathlib import Path
 import pandas as pd
 
 if TYPE_CHECKING:
-    from pyseis_io.core.dataset import SeismicData
+    from pyseis.core.dataset import SeismicData
 
 class SeismicImporter(ABC):
     """
-    Abstract base class for importing external seismic formats to pyseis-io internal format.
+    Abstract base class for importing external seismic formats to pyseis internal format.
     """
     
     @abstractmethod
@@ -47,7 +47,7 @@ class SeismicImporter(ABC):
 
 class SeismicExporter(ABC):
     """
-    Abstract base class for exporting pyseis-io internal format to external formats.
+    Abstract base class for exporting pyseis internal format to external formats.
     """
     
     @abstractmethod

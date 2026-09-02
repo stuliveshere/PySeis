@@ -1,5 +1,5 @@
 """
-pyseis-io: Single-Parquet seismic I/O library.
+pyseis: Single-Parquet seismic I/O library.
 """
 
 from .core.dataset import SeismicData

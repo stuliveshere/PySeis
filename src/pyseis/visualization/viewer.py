@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 from pathlib import Path
 
-from pyseis_io.core.dataset import SeismicData
+from pyseis.core.dataset import SeismicData
 
 class SeismicViewer:
     """

@@ -1,5 +1,5 @@
 """
-PyArrow schema utilities for pyseis-io single-Parquet datasets.
+PyArrow schema utilities for pyseis single-Parquet datasets.
 
 Provides clean PyArrow schema construction for FixedSizeList trace sample vectors
 and standardized domain header data types.

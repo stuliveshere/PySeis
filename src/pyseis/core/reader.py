@@ -1,5 +1,5 @@
 """
-Internal format reader for pyseis-io single-Parquet datasets.
+Internal format reader for pyseis single-Parquet datasets.
 """
 
 import io

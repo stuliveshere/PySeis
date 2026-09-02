@@ -1,5 +1,5 @@
 """
-Core data models and high-level SeismicData interface for pyseis-io.
+Core data models and high-level SeismicData interface for pyseis.
 """
 
 import io

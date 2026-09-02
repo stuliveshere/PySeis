@@ -4,8 +4,8 @@ import pandas as pd
 import pytest
 from pathlib import Path
 
-from pyseis_io.core.writer import InternalFormatWriter
-from pyseis_io.core.reader import InternalFormatReader
+from pyseis.core.writer import InternalFormatWriter
+from pyseis.core.reader import InternalFormatReader
 
 def test_writer_and_reader_file_roundtrip(tmp_path):
     out_file = tmp_path / "test_dataset.parquet"

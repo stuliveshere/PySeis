@@ -3,9 +3,9 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from pyseis_io.core.writer import InternalFormatWriter
-from pyseis_io.core.reader import InternalFormatReader
-from pyseis_io.core.dataset import SeismicData
+from pyseis.core.writer import InternalFormatWriter
+from pyseis.core.reader import InternalFormatReader
+from pyseis.core.dataset import SeismicData
 
 @pytest.fixture
 def temp_dataset_path(tmp_path: Path) -> Path:

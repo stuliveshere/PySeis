@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-# Add src to path so pyseis_io can be imported
+# Add src to path so pyseis can be imported
 # This is critical for tests to run against the local source code
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -42,7 +42,7 @@ def synthetic_data(tmp_path):
     })
     
     # Write to internal format first to get a valid SeismicData on disk
-    from pyseis_io.core.writer import InternalFormatWriter
+    from pyseis.core.writer import InternalFormatWriter
     
     path = tmp_path / "synthetic_internal.parquet"
     writer = InternalFormatWriter(path, overwrite=True)

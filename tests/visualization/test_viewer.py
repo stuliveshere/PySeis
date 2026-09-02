@@ -2,7 +2,7 @@
 import pytest
 import numpy as np
 import matplotlib.pyplot as plt
-from pyseis_io.visualization.viewer import SeismicViewer
+from pyseis.visualization.viewer import SeismicViewer
 
 def test_viewer_init(synthetic_data):
     """Test viewer initialization and navigation without showing window."""

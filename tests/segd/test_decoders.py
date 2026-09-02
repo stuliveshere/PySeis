@@ -4,7 +4,7 @@ Tests for sample format decoders and encoders.
 
 import pytest
 import numpy as np
-from pyseis_io.segd.decoders import (
+from pyseis.segd.decoders import (
     decode_ieee_float,
     encode_ieee_float,
     decode_int32,

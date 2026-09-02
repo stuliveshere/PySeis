@@ -1,5 +1,5 @@
 """
-High-Level SEGYImporter for importing SEG-Y files into pyseis-io single-Parquet datasets.
+High-Level SEGYImporter for importing SEG-Y files into pyseis single-Parquet datasets.
 """
 
 from __future__ import annotations
@@ -9,9 +9,9 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 import pandas as pd
 
-from pyseis_io.base import SeismicImporter
-from pyseis_io.core.writer import InternalFormatWriter
-from pyseis_io.core.dataset import SeismicData
+from pyseis.base import SeismicImporter
+from pyseis.core.writer import InternalFormatWriter
+from pyseis.core.dataset import SeismicData
 
 from .reader import SEGYReader
 from .fill_plan import SEGYFillPlan
@@ -19,7 +19,7 @@ from .schema import SEGYSchemaManager, SEGYEffectiveSchema
 
 class SEGYImporter(SeismicImporter):
     """
-    Reader and importer for SEG-Y files converting into pyseis-io internal .seis format.
+    Reader and importer for SEG-Y files converting into pyseis internal .seis format.
     Supports auto-detecting endianness, revision specs, custom header mappings,
     and global coordinate reference subtractions.
     """

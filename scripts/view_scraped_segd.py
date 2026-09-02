@@ -14,8 +14,8 @@ from matplotlib.widgets import Button
 # Add src to path using absolute resolve
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from pyseis_io.segd import SEGDReader, TraceFillPlan
-from pyseis_io.segd.schema import bcd_digits
+from pyseis.segd import SEGDReader, TraceFillPlan
+from pyseis.segd.schema import bcd_digits
 
 # Channel type code to description mapping (SEG-D standard + Sercel extensions)
 CHANNEL_TYPE_MAP = {

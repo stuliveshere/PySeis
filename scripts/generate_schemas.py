@@ -27,7 +27,7 @@ TRACE_HEADER_COLS = [
 ]
 
 def generate_schemas():
-    output_dir = Path("src/pyseis_io/templates/schemas")
+    output_dir = Path("src/pyseis/templates/schemas")
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # 1. Source Schema
@@ -71,7 +71,7 @@ def generate_schemas():
     layout_schema = {
         'layout_version': '1.0',
         'description': 'Directory layout version',
-        'generator': 'pyseis-io'
+        'generator': 'pyseis'
     }
     with open(output_dir / "layout_v1.0.yaml", 'w') as f:
         yaml.dump(layout_schema, f, sort_keys=False)
