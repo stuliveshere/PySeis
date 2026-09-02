@@ -15,7 +15,7 @@ It was ultimately decided to re-implement `pyseis` from the ground up with a ded
 ## Design Philosophy
 
 ### 1. Zero I/O Re-Invention
-`pyseis` is fundamentally an I/O library. Its primary goal is to eliminate the boilerplate of parsing binary seismic streams so geophysicists, processing engineers, and researchers can read data directly into **2D NumPy arrays** (for trace amplitudes) and **Pandas DataFrames** (for headers), write custom processing code, and save the results without having to reinvent I/O every time.
+`pyseis` is fundamentally an I/O library. Its primary goal is to eliminate the boilerplate of parsing binary seismic streams so that data can be read directly into **2D NumPy arrays** (for trace amplitudes) and **Pandas DataFrames** (for headers), modified in some way, and then written back out to a seismic file.
 
 ### 2. Layered YAML Schema Architecture
 To achieve both flexibility and speed, `pyseis` uses a hierarchical chain of human-editable YAML files:
@@ -24,6 +24,8 @@ To achieve both flexibility and speed, `pyseis` uses a hierarchical chain of hum
 3. **Custom / Field Overrides**: User-defined header fields and runtime extensions.
 
 At runtime, `pyseis` compiles these nested YAML definitions directly into optimized NumPy `dtype` structures for high-speed byte parsing without sacrificing customizability.
+
+Schemas can be easily modified or added, and the schema methodology is easily expanded to other file formats.
 
 ### 3. Managing Data Scale: RAM Buffers & Optional Parquet Storage
 Seismic datasets are often massive and rarely fit entirely in system memory. While processing in chunks (e.g., gather by gather) works well, constantly parsing and writing raw SEG-Y or SEG-D files imposes severe I/O overheads.
