@@ -1,5 +1,5 @@
 """
-pyseis: Single-Parquet seismic I/O library.
+PySeis: High-performance seismic data processing, I/O, and storage library.
 """
 
 from .core.dataset import SeismicData

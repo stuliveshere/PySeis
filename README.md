@@ -1,17 +1,18 @@
-# pyseis
+# PySeis
 
-A standalone I/O library for seismic data featuring a unified, high-performance **Single-Parquet dataset format** with support for industry-standard seismic formats.
+A high-performance Python library for seismic data processing, I/O, and storage featuring a unified **Single-Parquet dataset format** with full support for industry-standard seismic formats (SEG-Y, SEG-D, Seismic Unix, JavaSeis, RSF).
 
 ## Overview
 
-`pyseis` provides a modern, simplified storage engine for seismic data:
+`pyseis` provides a modern, simplified storage engine and toolkit for seismic data:
 
 - **Single-Parquet Format**: Entire dataset stored in a single `.parquet` file (or in-memory byte buffer)
 - **Zero-Copy Trace Access**: Fixed-length trace vectors stored in Arrow `FixedSizeList` columns for instant 2D NumPy array conversion
 - **Gather-Optimized**: Fast predicate pushdown filtering for shot, CDP, and receiver gathers
 - **In-Memory / Zero-Disk**: Native support for RAM-only stream buffers (`io.BytesIO` / `pyarrow.BufferOutputStream`)
 - **Embedded Metadata**: Global properties (`sample_rate`, domain, spatial CRS) and provenance history stored directly in Parquet file footers
-- **Industry Standard Interoperability**: Direct integration with Apache Arrow, Pandas, Polars, DuckDB, SEG-Y, SEG-D, and Seismic Unix (SU)
+- **Industry Standard Interoperability**: Direct integration with Apache Arrow, Pandas, Polars, DuckDB, SEG-Y, SEG-D, Seismic Unix (SU), JavaSeis, and RSF
+- **Spatial & Interactive Tools**: GeoPackage spatial GIS export and built-in interactive dataset visualization (`pyseis-view`)
 
 ## Key Features
 
@@ -33,7 +34,7 @@ pip install -e .
 ```python
 import numpy as np
 import pandas as pd
-from pyseis.core.writer import InternalFormatWriter
+import pyseis as ps
 
 # Generate synthetic seismic amplitudes (100 traces x 2000 samples)
 traces = np.random.randn(100, 2000).astype(np.float32)
@@ -48,7 +49,7 @@ headers = pd.DataFrame({
 })
 
 # Write to single Parquet file
-writer = InternalFormatWriter("my_dataset.parquet")
+writer = ps.InternalFormatWriter("my_dataset.parquet")
 writer.write(
     traces=traces,
     headers=headers,
@@ -59,10 +60,10 @@ writer.write(
 ### Reading and Gather Filtering
 
 ```python
-from pyseis.core.dataset import SeismicData
+import pyseis as ps
 
 # Open dataset (reads only tiny file footer instantly)
-sd = SeismicData.open("my_dataset.parquet")
+sd = ps.open("my_dataset.parquet")
 
 print(f"Traces: {sd.n_traces}, Samples per trace: {sd.n_samples}")
 print(f"Sample rate: {sd.sample_rate}s")
@@ -81,13 +82,13 @@ headers_df = shot_3.headers
 
 ```python
 import io
-from pyseis.core.dataset import SeismicData
+import pyseis as ps
 
 # Export dataset to an in-memory byte buffer
 ram_buffer = sd.to_buffer()
 
 # Open dataset from RAM buffer (zero disk I/O)
-sd_mem = SeismicData.from_buffer(ram_buffer)
+sd_mem = ps.from_buffer(ram_buffer)
 ```
 
 ## Dataset Architecture
@@ -113,24 +114,21 @@ my_dataset.parquet
 
 ```
 pyseis/
-├── core/                  # Core single-Parquet engine
-│   ├── dataset.py         # SeismicData interface
-│   ├── reader.py          # InternalFormatReader & predicate pushdown
-│   ├── writer.py          # InternalFormatWriter & PyArrow table builder
-│   ├── schema.py          # PyArrow schema generators & validation
-│   └── footer_metadata.py # Parquet file footer JSON metadata handler
-├── segy/                  # SEG-Y reader/writer support
-├── segd/                  # SEG-D reader/writer support
-├── su/                    # Seismic Unix support
-├── gpkg/                  # GeoPackage GIS exporter
-└── legacy/                # Format specs
+├── core/                  # Single-Parquet engine, dataset model, reader, writer, schema
+├── segy/                  # SEG-Y importer/exporter & header mapping
+├── segd/                  # SEG-D importer/exporter & multi-revision schemas
+├── su/                    # Seismic Unix (SU) importer/exporter
+├── javaseis/              # JavaSeis file format reader/parser
+├── rsf/                   # RSF (Madagascar) format support
+├── gpkg/                  # GeoPackage GIS spatial exporter
+└── visualization/         # Seismic data viewer & interactive plotting
 ```
 
 ## Development & Testing
 
 ```bash
-# Run test suite
-pytest tests/core/ -v
+# Run full test suite
+pytest
 ```
 
 ## License
@@ -139,4 +137,4 @@ GNU Affero General Public License v3.0
 
 ## Documentation
 
-For the full architectural specification, see [docs/architecture.md](docs/architecture.md).
+For full architectural details and API reference, see [docs/architecture.md](docs/architecture.md).
