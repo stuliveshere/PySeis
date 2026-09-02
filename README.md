@@ -1,25 +1,22 @@
 # PySeis
 
-A high-performance Python library for seismic data processing, I/O, and storage featuring a unified **Single-Parquet dataset format** with full support for industry-standard seismic formats (SEG-Y, SEG-D, Seismic Unix, JavaSeis, RSF).
+A fast, simple, and flexible Python I/O library for seismic data.
 
-## Overview
+## Core Philosophy
 
-`pyseis` provides a modern, simplified storage engine and toolkit for seismic data:
+`pyseis` is fundamentally an **I/O library** designed to make reading and writing seismic data effortless. It seamlessly converts complex seismic binary formats into native Python data structures—specifically **2D NumPy arrays** for trace amplitudes and **Pandas DataFrames** for trace headers.
 
-- **Single-Parquet Format**: Entire dataset stored in a single `.parquet` file (or in-memory byte buffer)
-- **Zero-Copy Trace Access**: Fixed-length trace vectors stored in Arrow `FixedSizeList` columns for instant 2D NumPy array conversion
-- **Gather-Optimized**: Fast predicate pushdown filtering for shot, CDP, and receiver gathers
-- **In-Memory / Zero-Disk**: Native support for RAM-only stream buffers (`io.BytesIO` / `pyarrow.BufferOutputStream`)
-- **Embedded Metadata**: Global properties (`sample_rate`, domain, spatial CRS) and provenance history stored directly in Parquet file footers
-- **Industry Standard Interoperability**: Direct integration with Apache Arrow, Pandas, Polars, DuckDB, SEG-Y, SEG-D, Seismic Unix (SU), JavaSeis, and RSF
-- **Spatial & Interactive Tools**: GeoPackage spatial GIS export and built-in interactive dataset visualization (`pyseis-view`)
+By eliminating the need to reinvent I/O for every project, `pyseis` empowers geophysicists, processing engineers, and researchers to focus on writing custom Python scripts for processing, analysis, and visualization.
 
-## Key Features
+## Key Capabilities
 
-- **Single-File Simplicity**: One file per dataset—no complex directory trees or schema file bloat.
-- **Embedded Footer Metadata**: Dataset properties and audit history stored cleanly in Parquet `key_value_metadata`.
-- **Predicate Pushdown Filtering**: Filter gathers by `source_id`, `cdp_id`, or `offset` directly at the I/O layer.
-- **Zero-Disk Streaming**: Convert and process datasets in RAM buffers without writing to disk.
+- **Multi-Format I/O**: Read and write industry-standard seismic formats including **SEG-Y**, **SEG-D** (Rev 0.0–3.1), **Seismic Unix (SU)**, **JavaSeis**, and **RSF (Madagascar)**.
+- **YAML-Backed Schemas**: Human-editable YAML schema definitions allow seamless customization for different format versions, manufacturer profiles (e.g., Sercel, SmartSolo), and custom user headers without changing code.
+- **Direct Memory & Buffer Access**: Read and write seismic streams directly to/from RAM memory buffers (`io.BytesIO` / `pyarrow.Buffer`) into Pandas DataFrames and NumPy arrays for zero-disk workflows.
+- **High-Performance Parquet Storage Engine**: Includes an internal single-file Parquet dataset format (`.parquet`) for persistent, high-performance on-disk storage, feature-rich predicate pushdown gather filtering (Shot, CDP, Receiver), and embedded JSON metadata/provenance lineage.
+- **GIS Export & Interactive QC**: Export survey geometries to GeoPackage (`.gpkg`) for QGIS integration, and inspect gathers interactively using the built-in `pyseis-view` CLI viewer.
+
+---
 
 ## Installation
 
@@ -27,73 +24,94 @@ A high-performance Python library for seismic data processing, I/O, and storage 
 pip install -e .
 ```
 
+---
+
 ## Quick Start
 
-### Creating and Writing a Dataset
+### 1. Reading Seismic Data into Pandas & NumPy
+
+```python
+import pyseis as ps
+
+# Read dataset into a SeismicData container
+sd = ps.open("my_dataset.parquet")
+
+# 2D NumPy array for amplitudes (shape: n_traces x n_samples)
+amplitudes = sd.data
+
+# Pandas DataFrame for trace headers
+headers_df = sd.headers
+
+print(f"Traces: {sd.n_traces}, Samples: {sd.n_samples}, dt: {sd.sample_rate}s")
+```
+
+### 2. Fast Gather Filtering (Predicate Pushdown)
+
+```python
+# Filter Shot Gather #105 instantly without loading unneeded traces
+shot_105 = sd.filter(source_id=105)
+
+shot_amplitudes = shot_105.data    # 2D NumPy array
+shot_headers = shot_105.headers    # Pandas DataFrame
+```
+
+### 3. Converting Formats (e.g. SEG-Y to Parquet)
+
+```python
+from pyseis.segy.importer import SEGYImporter
+
+# Import SEG-Y and save as single-file Parquet dataset
+importer = SEGYImporter("input_data.sgy")
+sd = importer.read()
+sd.save("output_data.parquet")
+```
+
+---
+
+## Seismic Processing Cookbook
+
+`pyseis` includes a collection of Python recipes for common seismic processing tasks using standard NumPy and SciPy operations:
+
+### Recipe 1: Applying Automatic Gain Control (AGC)
 
 ```python
 import numpy as np
-import pandas as pd
-import pyseis as ps
 
-# Generate synthetic seismic amplitudes (100 traces x 2000 samples)
-traces = np.random.randn(100, 2000).astype(np.float32)
+def apply_agc(data: np.ndarray, window_size: int = 100) -> np.ndarray:
+    """Apply RMS Automatic Gain Control along trace samples."""
+    gain_data = np.zeros_like(data)
+    half_win = window_size // 2
+    
+    for i in range(data.shape[1]):
+        start = max(0, i - half_win)
+        end = min(data.shape[1], i + half_win)
+        rms = np.sqrt(np.mean(data[:, start:end] ** 2, axis=1, keepdims=True) + 1e-10)
+        gain_data[:, i] = data[:, i] / rms.squeeze()
+        
+    return gain_data
 
-# Generate trace headers
-headers = pd.DataFrame({
-    "trace_id": np.arange(100, dtype=np.int32),
-    "source_id": np.repeat(np.arange(10, dtype=np.int32), 10),
-    "receiver_id": np.tile(np.arange(10, dtype=np.int32), 10),
-    "cdp_id": np.arange(100, dtype=np.int32),
-    "offset": np.linspace(100, 1000, 100, dtype=np.float32)
-})
+# Apply AGC directly to SeismicData NumPy matrix
+agc_amplitudes = apply_agc(sd.data, window_size=150)
+```
 
-# Write to single Parquet file
-writer = ps.InternalFormatWriter("my_dataset.parquet")
-writer.write(
-    traces=traces,
-    headers=headers,
-    metadata={"sample_rate": 0.002, "domain": "time"}
+### Recipe 2: Sorting and Stacking CDP Gathers
+
+```python
+# Sort headers and trace amplitudes by CDP and Offset
+sorted_indices = sd.headers.sort_values(by=["cdp_id", "offset"]).index
+sorted_amplitudes = sd.data[sorted_indices]
+
+# Compute mean stack across traces per CDP
+cdp_stack = sd.headers.groupby("cdp_id").apply(
+    lambda grp: sd.data[grp.index].mean(axis=0)
 )
 ```
 
-### Reading and Gather Filtering
-
-```python
-import pyseis as ps
-
-# Open dataset (reads only tiny file footer instantly)
-sd = ps.open("my_dataset.parquet")
-
-print(f"Traces: {sd.n_traces}, Samples per trace: {sd.n_samples}")
-print(f"Sample rate: {sd.sample_rate}s")
-
-# Extract Shot Gather #3 using Parquet predicate pushdown (I/O optimization)
-shot_3 = sd.filter(source_id=3)
-
-# Instant 2D NumPy array view (zero-copy)
-traces_2d = shot_3.data  # Shape: (10, 2000)
-
-# Pandas DataFrame of headers
-headers_df = shot_3.headers
-```
-
-### Zero-Disk In-Memory Workflows
-
-```python
-import io
-import pyseis as ps
-
-# Export dataset to an in-memory byte buffer
-ram_buffer = sd.to_buffer()
-
-# Open dataset from RAM buffer (zero disk I/O)
-sd_mem = ps.from_buffer(ram_buffer)
-```
+---
 
 ## Dataset Architecture
 
-A dataset is stored as a self-contained Parquet file:
+A `pyseis` dataset is stored as a self-contained Parquet file:
 
 ```
 my_dataset.parquet
@@ -110,6 +128,8 @@ my_dataset.parquet
     └── provenance history
 ```
 
+---
+
 ## Package Structure
 
 ```
@@ -118,18 +138,13 @@ pyseis/
 ├── segy/                  # SEG-Y importer/exporter & header mapping
 ├── segd/                  # SEG-D importer/exporter & multi-revision schemas
 ├── su/                    # Seismic Unix (SU) importer/exporter
-├── javaseis/              # JavaSeis file format reader/parser
+├── javaseis/              # JavaSeis format reader/parser
 ├── rsf/                   # RSF (Madagascar) format support
 ├── gpkg/                  # GeoPackage GIS spatial exporter
 └── visualization/         # Seismic data viewer & interactive plotting
 ```
 
-## Development & Testing
-
-```bash
-# Run full test suite
-pytest
-```
+---
 
 ## License
 
@@ -137,4 +152,4 @@ GNU Affero General Public License v3.0
 
 ## Documentation
 
-For full architectural details and API reference, see [docs/architecture.md](docs/architecture.md).
+For full architectural details and API specification, see [docs/architecture.md](docs/architecture.md).
