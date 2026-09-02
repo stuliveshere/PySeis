@@ -113,3 +113,9 @@ class SEGDImporter(SeismicImporter):
         writer.write(combined_traces, combined_headers, metadata=meta)
 
         return SeismicData.open(output_path)
+
+    def read(self) -> SeismicData:
+        """
+        Convenience method to scan and import data into an in-memory SeismicData object.
+        """
+        return self.import_data(io.BytesIO())

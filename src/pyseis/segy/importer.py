@@ -66,7 +66,7 @@ class SEGYImporter(SeismicImporter):
             )
             return plan.extract_headers_bulk(hdr_bytes_list)
 
-    def import_data(self, output_path: Union[str, Path], chunk_size: int = 1000, **kwargs) -> SeismicData:
+    def import_data(self, output_path: Union[str, Path, io.BytesIO], chunk_size: int = 1000, **kwargs) -> SeismicData:
         """
         Convert SEG-Y file into single-Parquet .seis dataset.
         """
@@ -97,6 +97,13 @@ class SEGYImporter(SeismicImporter):
             writer.write(samples_arr, headers_df, metadata=meta)
 
         return SeismicData.open(output_path)
+
+    def read(self) -> SeismicData:
+        """
+        Convenience method to scan and import data into an in-memory SeismicData object.
+        """
+        import io
+        return self.import_data(io.BytesIO())
 
 
 # Alias helper to avoid name confusion

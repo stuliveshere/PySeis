@@ -310,3 +310,10 @@ class SUImporter(SeismicImporter):
         
         from pyseis.core.dataset import SeismicData
         return SeismicData.open(output_path)
+
+    def read(self) -> 'SeismicData':
+        """
+        Convenience method to scan and import data into an in-memory SeismicData object.
+        """
+        self.scan()
+        return self.import_data(io.BytesIO())
