@@ -6,14 +6,16 @@ A fast, flexible, and schema-driven Python library for seismic data I/O and proc
 
 ## History & Origins
 
-`pyseis` began around 2011 as a collection of Python modules designed to run inline with Seismic Unix (SU). Over time, it expanded into a broad set of scripts and processing functions, but lacked a cohesive overall structure.
+`pyseis` began around 2011 as a collection of Python modules designed to run inline with Seismic Unix (SU). Over time, it expanded into a broad set of scripts and processing functions, but lacked a cohesive overall structure. That original codebase is archived and still available at [PySeis-archive](https://github.com/stuliveshere/PySeis-archive).
 
-The fundamental challenge was always **I/O performance vs. flexibility**:
+It was ultimately decided to re-implement `pyseis` from the ground up with a dedicated focus on **I/O to and from various seismic file formats**—making seismic data seamlessly available in standard **Pandas DataFrames** and **NumPy arrays**.
+
+The fundamental challenge in seismic I/O was always **performance vs. flexibility**:
 - Fast binary readers were hardcoded and rigid.
 - Flexible, configurable readers were far too slow for real-world dataset sizes.
 - SEG-D in particular presented an immense hurdle due to huge variations across official specifications, manufacturer quirks, and custom field implementations.
 
-After several years of real-world iteration, `pyseis` solved this dilemma by pairing **declarative nested YAML schemas** with low-level **NumPy `dtype` binary compilation**.
+`pyseis` solved this dilemma by pairing **declarative nested YAML schemas** with low-level **NumPy `dtype` binary compilation**.
 
 ---
 
