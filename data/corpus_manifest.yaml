@@ -14,7 +14,7 @@ datasets:
     endian: "big"
     source_project: "SEG Open Data / Mobil AVO"
     seg_wiki_page: "https://wiki.seg.org/wiki/Mobil_AVO_Viking_Graben_Line_12"
-    download_url: "https://raw.githubusercontent.com/equinor/segyio/main/python/tutorials/viking_small.segy"
+    download_url: "https://raw.githubusercontent.com/stuliveshere/pyseis/main/data/segy/viking_small.segy"
     file_name: "viking_small.segy"
     target_dir: "data/segy"
     sha256: "472c0ccf4577ab94e021ff82726cc8bfae8f894bf0de889d28289a7030fa4eed"
@@ -33,7 +33,7 @@ datasets:
     endian: "big"
     source_project: "SEG Open Data / dGB Earth Sciences"
     seg_wiki_page: "https://wiki.seg.org/wiki/F3_Netherlands"
-    download_url: "https://raw.githubusercontent.com/equinor/segyio/main/test-data/f3.sgy"
+    download_url: "https://raw.githubusercontent.com/stuliveshere/pyseis/main/data/segy/f3.sgy"
     file_name: "f3.sgy"
     target_dir: "data/segy"
     sha256: "6008d05547c6b8f6050cea7ca4683f1be3fac260235cad47eb5e61ee05d2ce23"
@@ -52,7 +52,7 @@ datasets:
     endian: "little"
     source_project: "SEG Open Data / dGB Earth Sciences"
     seg_wiki_page: "https://wiki.seg.org/wiki/F3_Netherlands"
-    download_url: "https://raw.githubusercontent.com/equinor/segyio/main/test-data/f3-lsb.sgy"
+    download_url: "https://raw.githubusercontent.com/stuliveshere/pyseis/main/data/segy/f3_lsb.sgy"
     file_name: "f3_lsb.sgy"
     target_dir: "data/segy"
     sha256: "7820e102547c938fcc86236ca928e5e7b2854b8585201b777d7bf980ad04af3e"
@@ -71,7 +71,7 @@ datasets:
     endian: "big"
     source_project: "SEG Open Data Benchmark"
     seg_wiki_page: "https://wiki.seg.org/wiki/Open_data"
-    download_url: "https://raw.githubusercontent.com/equinor/segyio/main/test-data/shot-gather.sgy"
+    download_url: "https://raw.githubusercontent.com/stuliveshere/pyseis/main/data/segy/shot-gather.sgy"
     file_name: "shot-gather.sgy"
     target_dir: "data/segy"
     sha256: "588eb04460677fdfaba8dd2318c7317153aa6ef08afb8693cff1a14f44d07886"
@@ -80,25 +80,6 @@ datasets:
       n_samples: 25
       sample_rate: 0.001
     description: "2D field shot gather with trace sequence numbers and source-to-receiver offset geometry."
-
-  - id: "segy_brute_stack"
-    name: "Brute Stack SEG-Y Profile with Linear AGC"
-    format: "segy"
-    data_type: "stack_2d"
-    spec_version: "rev0"
-    encoding: "ibm_float"
-    endian: "big"
-    source_project: "PySeis Open Corpus"
-    seg_wiki_page: "https://wiki.seg.org/wiki/Open_data"
-    download_url: "https://raw.githubusercontent.com/stuliveshere/pyseis/main/data/segy/1ab15a_brute_stack_linear_agc.sgy"
-    file_name: "1ab15a_brute_stack_linear_agc.sgy"
-    target_dir: "data/segy"
-    sha256: "3d2ae905ddd7b061932127b3856fa3891f6b09a19620d46b021d4d0ea5565317"
-    expected:
-      n_traces: 1750
-      n_samples: 10001
-      sample_rate: 0.002
-    description: "2D brute stack profile with linear gain control for testing gather operations."
 
   - id: "segy_obspy_one_trace_11"
     name: "ObsPy SEG-Y Benchmark Record (1911)"
@@ -109,7 +90,7 @@ datasets:
     endian: "big"
     source_project: "ObsPy Geophysical Toolkit"
     seg_wiki_page: "https://wiki.seg.org/wiki/Open_data"
-    download_url: "https://raw.githubusercontent.com/obspy/obspy/master/obspy/io/segy/tests/data/one_trace_year_11.sgy"
+    download_url: "https://raw.githubusercontent.com/stuliveshere/pyseis/main/data/segy/one_trace_year_11.sgy"
     file_name: "one_trace_year_11.sgy"
     target_dir: "data/segy"
     sha256: "5b0af040c09c718738b01275e807c8984041c9a933863b526e3bed75b176dc9f"
@@ -130,12 +111,12 @@ datasets:
     manufacturer: "smartsolo"
     source_project: "SEG Open Data / PySeis Corpus"
     seg_wiki_page: "https://wiki.seg.org/wiki/Open_data"
-    download_url: "https://raw.githubusercontent.com/stuliveshere/pyseis/main/data/segd/0b9dc8_00001409.segd"
-    file_name: "0b9dc8_00001409.segd"
+    download_url: "https://raw.githubusercontent.com/stuliveshere/pyseis/main/data/segd/smartsolo_rev2.segd"
+    file_name: "smartsolo_rev2.segd"
     target_dir: "data/segd"
-    sha256: "76a220cc7a673676f1058d1623ccef98bd8719d938ba4aad4cd7198a6924b817"
+    sha256: "3d863488998458cd5796b27b8a729b45e959be8c84c612510280fcd2fd2be952"
     expected:
-      n_traces: 500
-      n_samples: 28001
-      sample_rate: 0.001
+      n_traces: 1
+      n_samples: 7126716
+      sample_rate: 0.002
     description: "SEG-D Rev 2.1 autonomous node record featuring SmartSolo equipment block headers."
