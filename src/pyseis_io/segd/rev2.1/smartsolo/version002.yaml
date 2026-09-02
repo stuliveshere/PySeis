@@ -1,0 +1,57 @@
+# SmartSolo firmware spec v2 — SEG-D 2.1 on wire (structural delta)
+# Paired with version002.map.yaml for ProMAX mapping deltas.
+# References: SmartSolo SEGD Format Rev1.0 Description v2
+#             javadocs/segd/SmartSolo_segd_format_Rev1.0_description_v2.pdf
+#             SmartSolo SEGD Format Rev2.1 Description v2
+#             javadocs/segd/SmartSolo_segd_format_Rev2.1_description_v2.pdf
+#
+# fw1.0_v2 and fw2.1_v2 produce byte-identical SEG-D 2.1 output on the wire,
+# so a single file describes both. The firmware_labels list supplies the two
+# operator-facing labels for variant selection.
+#
+# Distinguishing wire features vs version001:
+#   - SPS source X/Y/Z present at external_header bytes 46-57.
+#
+# (The source-file coords at receiver_coords bytes 12-23 used to be flagged
+# as a v2-only feature but corpus data shows v1 SG/RG files populate them
+# too — those fields now live in standard.yaml so both variants get them.)
+#
+# Not auto-detectable. Undiscriminable in-file from version001; this file is the
+# DEFAULT for GH2 = "2.1" records unless the operator selects otherwise.
+
+id: version002
+
+firmware_labels:
+  - id: fw1.0_v2
+    operator_label: "SmartSolo firmware Rev1.0 spec v2"
+  - id: fw2.1_v2
+    operator_label: "SmartSolo firmware Rev2.1 spec v2"
+
+blocks:
+  external_header:
+    fields:
+      - name: sps_source_x_cm
+        after: source_gps_height_cm
+        offset: 46
+        length: 4
+        type: int32
+        description: "SPS source X in cm. 0 if not SG."
+        spec_ref: "smartsolo Rev2.1 v2 §2.1.6"
+
+      - name: sps_source_y_cm
+        offset: 50
+        length: 4
+        type: int32
+        description: "SPS source Y in cm. 0 if not SG."
+        spec_ref: "smartsolo Rev2.1 v2 §2.1.6"
+
+      - name: sps_source_z_cm
+        offset: 54
+        length: 4
+        type: int32
+        description: "SPS source Z in cm. 0 if not SG."
+        spec_ref: "smartsolo Rev2.1 v2 §2.1.6"
+
+      # bytes 58-1023: reserved
+
+# ProMAX mapping deltas for v2 live in version002.map.yaml (paired file).

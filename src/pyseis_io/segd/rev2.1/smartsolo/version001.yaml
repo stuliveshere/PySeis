@@ -1,0 +1,22 @@
+# SmartSolo firmware gen Rev2.1, spec document v1 — SEG-D 2.1 on wire
+# Reference: SmartSolo SEGD Format Rev2.1 Description (v1)
+#            javadocs/segd/SmartSolo_segd_format_Rev2.1_description.pdf
+#
+# Distinguishing wire features vs version002:
+#   - No SPS source X/Y/Z in external_header (bytes 46-1023 reserved).
+#
+# (The source-file coords at receiver_coords bytes 12-23 used to be flagged
+# as v2-only here but corpus data shows v1 files populate them too — those
+# fields now live in standard.yaml so both variants get them.)
+# All other fields inherited verbatim from rev2.1/smartsolo/standard.yaml.
+#
+# Not auto-detectable. Undiscriminable in-file from version002; operator override required.
+# version002 is the default for GH2 = "2.1" files.
+
+id: version001
+
+firmware_labels:
+  - id: fw2.1_v1
+    operator_label: "SmartSolo firmware Rev2.1 spec v1 (no SPS)"
+
+# No blocks or trace_extensions sections — nothing to add beyond base.

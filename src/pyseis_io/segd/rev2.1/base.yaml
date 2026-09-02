@@ -1,0 +1,224 @@
+# SEG-D Rev2.1 base — standard block definitions (schema v2)
+# Reference: SEG Technical Standards Committee, "SEG-D Revision 2.1" (2006)
+#            javadocs/segd/seg_d_rev2.1.pdf §8.1-8.6
+#
+# Bottom layer of the 4-layer stack:
+#   base.yaml (this file)  ─ SEG-D-standard structural only
+#   <mfr>/standard.yaml    ─ manufacturer-common structural overrides
+#   <mfr>/versionNNN.yaml  ─ firmware-variant structural deltas
+#   <mfr>/*.map.yaml       ─ ProMAX/SeisSpace header bindings (standard + per-version)
+#
+# Carries the minimum fields needed to walk a Rev 2.1 record (block counts,
+# per-trace sizing, CSD identity). ProMAX/SeisSpace header bindings live in
+# the .map.yaml files — not here. Import-only fields (year, day, time,
+# filter freqs, gain settings) belong in the manufacturer or variant layer.
+
+blocks:
+
+  # ── General Header 1 (32 bytes) ─────────────────────────────────────────────
+  general_header_1:
+    number: 1
+    size: 32
+    fields:
+
+      - name: format_code
+        offset: 2                # spec bytes 3-4
+        length: 2
+        type: bcd_digits
+        description: "Data sample format: 8015=20-bit bin, 8036=24-bit INT, 8038=32-bit INT, 8058=32-bit IEEE"
+        spec_ref: "rev2.1 §8.1 p.38"
+
+      - name: additional_gh_blocks
+        offset: 11               # spec byte 12, HIGH nibble; unsigned binary (not BCD)
+        nibble: high
+        type: bcd_nibble
+        description: "Number of additional 32-byte GH blocks after GH1 (1 = GH2 only; SmartSolo Rev2.1 = 2)"
+        spec_ref: "rev2.1 §8.1 p.39"
+
+      - name: manufacturer_code
+        offset: 16               # spec byte 17
+        length: 1
+        type: bcd_digits
+        description: "Manufacturer code (0x61 = SmartSolo/DTCC; see spec Appendix A)"
+        spec_ref: "rev2.1 §8.1 p.39"
+
+      - name: scan_types_per_record
+        offset: 27               # spec byte 28
+        length: 1
+        type: bcd_digits
+        description: "Number of scan types per record (1-99; zero invalid)"
+        spec_ref: "rev2.1 §8.1 p.41"
+
+      - name: channel_sets_per_scan
+        offset: 28               # spec byte 29
+        length: 1
+        type: bcd_digits
+        description: "Channel sets per scan type (1-99; FF = use GH2.extended_channel_sets)"
+        spec_ref: "rev2.1 §8.1 p.41"
+
+      - name: skew_blocks
+        offset: 29               # spec byte 30
+        length: 1
+        type: bcd_digits
+        description: "Number of 32-byte sample skew fields appended to each scan-type header"
+        spec_ref: "rev2.1 §8.1 p.41"
+
+      - name: extended_header_blocks
+        offset: 30               # spec byte 31
+        length: 1
+        type: bcd_digits
+        description: "Number of 32-byte extended header blocks (FF = use GH2.extended_header_blocks_count)"
+        spec_ref: "rev2.1 §8.1 p.41"
+
+      - name: external_header_blocks
+        offset: 31               # spec byte 32
+        length: 1
+        type: bcd_digits
+        description: "Number of 32-byte external header blocks (FF = use GH2.external_header_blocks_count)"
+        spec_ref: "rev2.1 §8.1 p.41"
+
+  # ── General Header 2 (32 bytes) ─────────────────────────────────────────────
+  general_header_2:
+    number: 2
+    size: 32
+    fields:
+
+      - name: expanded_file_number
+        offset: 0                # spec bytes 1-3
+        length: 3
+        type: uint24
+        description: "Expanded file number (use when GH1 file_number = 0xFFFF)"
+        spec_ref: "rev2.1 §8.2 p.42"
+
+      - name: extended_channel_sets
+        offset: 3                # spec bytes 4-5
+        length: 2
+        type: uint16
+        description: "Extended channel sets per scan (use when GH1 channel_sets_per_scan = FF)"
+        spec_ref: "rev2.1 §8.2 p.42"
+
+      - name: extended_header_blocks_count
+        offset: 5                # spec bytes 6-7
+        length: 2
+        type: uint16
+        description: "Extended header blocks count (use when GH1 extended_header_blocks = FF)"
+        spec_ref: "rev2.1 §8.2 p.42"
+
+      - name: external_header_blocks_count
+        offset: 7                # spec bytes 8-9
+        length: 2
+        type: uint16
+        description: "External header blocks count (use when GH1 external_header_blocks = FF)"
+        spec_ref: "rev2.1 §8.2 p.42"
+
+      - name: segd_revision_major
+        offset: 10               # spec byte 11
+        length: 1
+        type: uint8
+        description: "SEG-D major revision number (0x02 for Rev2.1)"
+        spec_ref: "rev2.1 §8.2 p.42"
+
+      - name: segd_revision_minor
+        offset: 11               # spec byte 12
+        length: 1
+        type: uint8
+        description: "SEG-D minor revision number (0x01 for Rev2.1)"
+        spec_ref: "rev2.1 §8.2 p.42"
+
+      - name: extended_record_length_ms
+        offset: 14               # spec bytes 15-17
+        length: 3
+        type: uint24
+        description: "Record length in milliseconds (use when GH1 record_length = FFF)"
+        spec_ref: "rev2.1 §8.2 p.43"
+
+  # ── Channel Set Descriptor (32 bytes) ───────────────────────────────────────
+  # One descriptor per channel set per scan type. Carries per-trace sizing
+  # (channel_count, trace_header_extensions_count) required for structural
+  # validation, plus fallback sample-count derivation fields (start/end time,
+  # subscans_exponent) for manufacturers that don't publish an explicit
+  # samples-per-trace in the extended header.
+  channel_set_descriptor:
+    size: 32
+    fields:
+
+      - name: scan_type_number
+        offset: 0                # spec byte 1
+        length: 1
+        type: bcd_digits
+        description: "Scan type number (1-99; repeated in all descriptors for the same scan type)"
+        spec_ref: "rev2.1 §8.3 p.44"
+
+      - name: channel_set_number
+        offset: 1                # spec byte 2
+        length: 1
+        type: bcd_digits
+        description: "Channel set number (1-99; FF = use extended_channel_set_number at offsets 26-27)"
+        spec_ref: "rev2.1 §8.3 p.44"
+
+      - name: channel_set_start_time
+        offset: 2                # spec bytes 3-4
+        length: 2
+        type: uint16
+        description: "Channel set start time from time zero (2-ms increments; 0 = time zero)"
+        spec_ref: "rev2.1 §8.3 p.44"
+
+      - name: channel_set_end_time
+        offset: 4                # spec bytes 5-6
+        length: 2
+        type: uint16
+        description: "Channel set end time from time zero (2-ms increments; = record length for normal recording)"
+        spec_ref: "rev2.1 §8.3 p.44"
+
+      - name: channel_count
+        offset: 8                # spec bytes 9-10
+        length: 2
+        type: bcd_digits
+        description: "Number of channels in this channel set (4 BCD digits; 0-9999)"
+        spec_ref: "rev2.1 §8.3 p.45"
+
+      - name: channel_type
+        offset: 10               # spec byte 11, HIGH nibble
+        nibble: high
+        type: bcd_nibble
+        values:
+          0x1: seis
+          0x2: time_break
+          0x3: uphole
+          0x4: water_break
+          0x5: time_counter
+          0x6: external
+          0x7: other
+          0x8: signature_unfiltered
+          0x9: signature_filtered
+          0xC: aux_data_trailer
+        description: "Channel type (Rev2.1 codes)"
+        spec_ref: "rev2.1 §8.3 p.45"
+
+      - name: subscans_exponent
+        offset: 11               # spec byte 12, HIGH nibble
+        nibble: high
+        type: bcd_nibble
+        description: "Sub-scan exponent S/C; sub-scans per base scan = 2^S/C"
+        spec_ref: "rev2.1 §8.3 p.45"
+
+      - name: trace_header_extensions_count
+        offset: 28               # spec byte 29, LOW nibble
+        nibble: low
+        type: bcd_nibble
+        description: "Number of 32-byte trace header extension blocks per trace in this channel set (0-15)"
+        spec_ref: "rev2.1 §8.3 p.46"
+
+  # ── Demultiplexed Trace Header (32 bytes) ───────────────────────────────────
+  # Minimal structural definition — expands in the manufacturer layer when
+  # variant-specific extended fields are required for import.
+  demux_trace_header:
+    size: 32
+    fields:
+
+      - name: trace_number
+        offset: 4                # spec bytes 5-6
+        length: 2
+        type: bcd_digits
+        description: "Trace number within channel set (4 BCD digits; FFFF = use extended_trace_number in a trace ext)"
+        spec_ref: "rev2.1 §8.5 p.48"

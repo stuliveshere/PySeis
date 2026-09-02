@@ -1,0 +1,11 @@
+# SmartSolo firmware spec v2 (Rev1.0_v2 + Rev2.1_v2) — ProMAX/SeisSpace map delta
+# Paired with rev2.1/smartsolo/version002.yaml (structural delta).
+# Merges after rev2.1/smartsolo/standard.map.yaml.
+#
+# Variant-specific bindings: SPS source coordinates present from v2 only.
+
+mappings:
+  sg:
+    SPS_X:     { field: external_header.sps_source_x_cm, scale: 0.01 }   # cm → m
+    SPS_Y:     { field: external_header.sps_source_y_cm, scale: 0.01 }
+    SPS_Z:     { field: external_header.sps_source_z_cm, scale: 0.01 }

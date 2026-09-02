@@ -1,0 +1,67 @@
+# SmartSolo firmware gen Rev1.0, spec document v1 — SEG-D 1.0 on wire
+# Reference: SmartSolo SEGD Format Rev1.0 Description (v1)
+#            javadocs/segd/SmartSolo_segd_format_Rev1.0_description.pdf
+#
+# AUTO-DETECTED: GH2 bytes 11-12 = BCD "1.0" uniquely identifies this variant.
+# All Rev2.1-on-wire SmartSolo variants encode "2.1" there; this is the only
+# SmartSolo firmware that writes SEG-D 1.0 on the wire.
+#
+# Distinguishing wire features:
+#   - receiver_geometry (block 1): R_LINE at offset 0 (INT24), SRF_SLOC at
+#     offset 3 (INT24). No extended line/point fields at offsets 10-19
+#     (zeroed in v1). No fractional parts — Rev2.1 added those.
+#
+# Channel type codes: 0001=Seis, 1001=Aux. Documented in rev1.0/base.yaml
+# channel_set_descriptor.channel_type.
+
+id: version001
+
+firmware_labels:
+  - id: fw1.0_v1
+    operator_label: "SmartSolo firmware Rev1.0 spec v1"
+
+version_signal:
+  block: general_header_2
+  offset: 10                  # spec bytes 11-12; BCD in Rev1.0 data
+  length: 2
+  type: bcd_digits
+  value: "1.0"
+
+trace_extensions:
+  blocks:
+
+    # Block 1 — receiver geometry. Rev1.0-specific layout: R_LINE and SRF_SLOC
+    # at offsets 0 and 3 as INT24 (no short sentinel, no fractions). The
+    # extended INT+FRAC fields at offsets 10-19 used by Rev2.1 are absent in v1.
+    receiver_geometry:
+      number: 1
+      fields:
+        - name: rcvr_line_int
+          offset: 0
+          length: 3
+          type: int24
+          description: "Receiver line number (integer only; no fraction in v1). In RG mode: source line. 0 for CG."
+          spec_ref: "smartsolo Rev1.0 v1 §trace ext block 1"
+
+        - name: rcvr_point_int
+          offset: 3
+          length: 3
+          type: int24
+          description: "Receiver point number (integer only; no fraction in v1). In RG mode: source point. 0 for CG."
+          spec_ref: "smartsolo Rev1.0 v1 §trace ext block 1"
+
+        - name: rcvr_source_point_index
+          offset: 6
+          length: 1
+          type: uint8
+          description: "Receiver/source point index"
+          spec_ref: "smartsolo Rev1.0 v1 §trace ext block 1"
+
+        - name: samples_per_trace
+          offset: 7
+          length: 3
+          type: int24
+          description: "Number of samples per trace (per-trace copy)"
+          spec_ref: "smartsolo Rev1.0 v1 §trace ext block 1"
+
+        # bytes 10-31: not used (extended line/point fields zeroed in v1)

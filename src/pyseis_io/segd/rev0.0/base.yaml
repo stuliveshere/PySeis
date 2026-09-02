@@ -1,0 +1,369 @@
+# SEG-D Rev0 base — standard block definitions (schema v2)
+# Reference: SEG Subcommittee on Digital Tape Formats, "Digital field tape
+#            format standards — SEG-D" (Geophysics 1975, v40 §02 pp.344-352).
+#            Local copy: javadocs/segd/seg_d_rev0.pdf
+#
+# Bottom layer of the 4-layer stack; same structure as rev1.0/base.yaml but
+# without general_header_2 / general_header_3 (Rev 0 doesn't define them) and
+# with a 20-byte demux trace header (no extension blocks).
+#
+# Carries the minimum fields needed to walk a Rev 0 record: GH1 sizing
+# fields, channel-set descriptor identity + per-trace sizing, and a 20-byte
+# trace header. ProMAX/SeisSpace bindings live in the .map.yaml files in
+# the manufacturer layer.
+#
+# Distinguishing wire features (vs. Rev 1.0):
+#   - GH1 byte 12 high nibble is RESERVED (zero) in Rev 0. The Rev 1.0
+#     spec repurposed this nibble as additional_gh_blocks; Rev 0 files
+#     therefore decode as additional_gh_blocks=0, which the reader uses
+#     as the dispatch signal that the file is Rev 0.
+#   - No GH2 / GH3 blocks at all; CSD section starts immediately after GH1
+#     at byte 32 (vs. byte 64 in Rev 1.0+).
+#   - Demux trace header is 20 bytes with no trace-extension blocks.
+#   - Sample-format codes 8014/8015/8024/8025/8036/8038 (the binary/quaternary
+#     /hexadecimal exponent variants documented in the spec). 8058 (32-bit
+#     IEEE float) is a Rev 1+ addition.
+
+blocks:
+
+  # ── General Header 1 (32 bytes) ─────────────────────────────────────────────
+  general_header_1:
+    number: 1
+    size: 32
+    reserved:
+      - { offset: 11, length: 1, note: "byte 12 high nibble is reserved (zero) in Rev 0; reader treats it as additional_gh_blocks=0" }
+    fields:
+
+      - name: file_number
+        offset: 0                # spec bytes 1-2
+        length: 2
+        type: bcd_digits
+        description: "File number (4 BCD digits, 0-9999)"
+        spec_ref: "rev0 §General header byte 1-2"
+
+      - name: format_code
+        offset: 2                # spec bytes 3-4
+        length: 2
+        type: bcd_digits
+        description: "Data format code (4 BCD digits): 8014/8024 quaternary, 8015/8025 binary, 8036/8038 hexadecimal — see Appendix A of seg_d_rev0.pdf"
+        spec_ref: "rev0 §General header byte 3-4"
+
+      - name: general_constants
+        offset: 4                # spec bytes 5-10
+        length: 6
+        type: bcd_digits
+        description: "General constants K1-K12 (12 BCD digits; system-defined recording parameters)"
+        spec_ref: "rev0 §General header byte 5-10"
+
+      - name: year
+        offset: 10               # spec byte 11
+        length: 1
+        type: bcd_digits
+        description: "Last two digits of year (BCD; e.g., 0x94 = 1994)"
+        spec_ref: "rev0 §General header byte 11"
+
+      # Byte 12 high nibble is reserved-zero per spec. We declare it as
+      # additional_gh_blocks (matching Rev 1.0+ convention) so RecordLayout
+      # can read the same field name across all revisions; for Rev 0 files
+      # the value will be 0, which is the dispatch signal back to this base.
+      - name: additional_gh_blocks
+        offset: 11               # spec byte 12 high nibble (reserved in Rev 0; renamed in Rev 1.0+)
+        nibble: high
+        type: bcd_nibble
+        description: "Always 0 in Rev 0 (spec: reserved). In Rev 1.0+ this carries the count of additional GH blocks; the reader dispatches on this field."
+        spec_ref: "rev0 §General header byte 12"
+
+      - name: julian_day
+        offset: 11               # spec byte 12 low nibble + byte 13
+        nibble: low
+        length: 2
+        type: bcd_digits
+        description: "Julian day 1-366 (3 BCD digits: low nibble of byte 12 + byte 13)"
+        spec_ref: "rev0 §General header byte 12-13"
+
+      - name: time_hhmmss
+        offset: 13               # spec bytes 14-16
+        length: 3
+        type: bcd_digits
+        description: "UTC time HHMMSS (6 BCD digits)"
+        spec_ref: "rev0 §General header byte 14-16"
+
+      - name: manufacturer_code
+        offset: 16               # spec byte 17
+        length: 1
+        type: bcd_digits
+        description: "Manufacturer code (2 BCD digits; see Appendix A of the SEG-D Rev 1 spec for code assignments — 24 = Input/Output, Inc.)"
+        spec_ref: "rev0 §General header byte 17"
+
+      - name: manufacturer_serial
+        offset: 17               # spec bytes 18-19
+        length: 2
+        type: bcd_digits
+        description: "Manufacturer serial number (4 BCD digits)"
+        spec_ref: "rev0 §General header byte 18-19"
+
+      - name: bytes_per_scan
+        offset: 19               # spec bytes 20-22
+        length: 3
+        type: bcd_digits
+        description: "Bytes per scan (6 BCD digits; 0 = gapless / non-blocked record)"
+        spec_ref: "rev0 §General header byte 20-22"
+
+      - name: base_scan_interval
+        offset: 22               # spec byte 23
+        length: 1
+        type: uint8
+        description: "Base scan interval in 1/16 ms units (e.g., 0x20 = 32/16 = 2 ms)"
+        spec_ref: "rev0 §General header byte 23"
+
+      - name: polarity
+        offset: 23               # spec byte 24 high nibble
+        nibble: high
+        type: bcd_nibble
+        description: "Polarity: 0=untested, 1=zero=zero, 2=… (see spec Appendix A)"
+        spec_ref: "rev0 §General header byte 24"
+
+      - name: record_type
+        offset: 25               # spec byte 26 high nibble
+        nibble: high
+        type: bcd_nibble
+        description: "Record type: 0x8 = normal, 0x2 = test"
+        spec_ref: "rev0 §General header byte 26"
+
+      - name: record_length
+        offset: 25               # spec byte 26 low nibble + byte 27
+        nibble: low
+        length: 2
+        type: bcd_digits
+        description: "Record length (3 BCD digits). Encoding: file_dump shows 090 → 9216 ms (record_ms = BCD × 102.4); not all dumpers use the same conversion — verify per recorder."
+        spec_ref: "rev0 §General header byte 26-27"
+
+      - name: scan_types_per_record
+        offset: 27               # spec byte 28
+        length: 1
+        type: bcd_digits
+        description: "Number of scan types per record (1-99)"
+        spec_ref: "rev0 §General header byte 28"
+
+      - name: channel_sets_per_scan
+        offset: 28               # spec byte 29
+        length: 1
+        type: bcd_digits
+        description: "Channel sets per scan type (1-99)"
+        spec_ref: "rev0 §General header byte 29"
+
+      - name: skew_blocks
+        offset: 29               # spec byte 30
+        length: 1
+        type: bcd_digits
+        description: "Number of 32-byte sample-skew fields appended to each scan-type header"
+        spec_ref: "rev0 §General header byte 30"
+
+      - name: extended_header_blocks
+        offset: 30               # spec byte 31
+        length: 1
+        type: bcd_digits
+        description: "Number of 32-byte extended header blocks (manufacturer-defined content)"
+        spec_ref: "rev0 §General header byte 31"
+
+      - name: external_header_blocks
+        offset: 31               # spec byte 32
+        length: 1
+        type: bcd_digits
+        description: "Number of 32-byte external header blocks (user-defined content)"
+        spec_ref: "rev0 §General header byte 32"
+
+  # ── Channel Set Descriptor (32 bytes) ───────────────────────────────────────
+  # One descriptor per channel set per scan type. Bytes 27-32 are reserved-zero
+  # in Rev 0 (Rev 1.0 added extended_channel_set_number / trace_header_extensions
+  # there). Carries per-trace sizing (channel_count, descale multiplier) needed
+  # by the reader / consumer.
+  channel_set_descriptor:
+    size: 32
+    reserved:
+      - { offset: 26, length: 6, note: "spec: reserved zero in Rev 0; Rev 1.0 reuses for extended fields" }
+    fields:
+
+      - name: scan_type_number
+        offset: 0                # spec byte 1
+        length: 1
+        type: bcd_digits
+        description: "Scan type number (1-99; repeated in all descriptors for the same scan type)"
+        spec_ref: "rev0 §Channel set descriptor byte 1"
+
+      - name: channel_set_number
+        offset: 1                # spec byte 2
+        length: 1
+        type: bcd_digits
+        description: "Channel set number (1-99)"
+        spec_ref: "rev0 §Channel set descriptor byte 2"
+
+      - name: channel_set_start_time
+        offset: 2                # spec bytes 3-4
+        length: 2
+        type: uint16
+        description: "Channel set start time from time zero. Per spec p.16 Fig 5 bit labels (TF16..TF1) this is 16-bit big-endian binary, NOT BCD as the surrounding fields. Units = 2 ms. 0 = time zero."
+        spec_ref: "rev0 §Channel set descriptor byte 3-4"
+
+      - name: channel_set_end_time
+        offset: 4                # spec bytes 5-6
+        length: 2
+        type: uint16
+        description: "Channel set end time from time zero. 16-bit big-endian binary (NOT BCD); units = 2 ms. End-time × 2 ms gives the record length when start-time = 0."
+        spec_ref: "rev0 §Channel set descriptor byte 5-6"
+
+      - name: mp_factor
+        offset: 7                # spec byte 8
+        length: 1
+        type: int8
+        description: "Descale multiplier MP (sign-magnitude binary exponent of 2; descale = 2^MP)"
+        spec_ref: "rev0 §Channel set descriptor byte 8"
+
+      - name: channel_count
+        offset: 8                # spec bytes 9-10
+        length: 2
+        type: bcd_digits
+        description: "Number of channels in this channel set (4 BCD digits; 0-9999)"
+        spec_ref: "rev0 §Channel set descriptor byte 9-10"
+
+      - name: channel_type
+        offset: 10               # spec byte 11 high nibble
+        nibble: high
+        type: bcd_nibble
+        values:
+          0x1: seis
+          0x2: time_break
+          0x3: uphole
+          0x4: water_break
+          0x5: time_counter
+          0x6: external
+          0x7: other
+          0x8: signature_unfiltered
+          0x9: signature_filtered
+        description: "Channel type (Rev 0 codes — same as Rev 1.0; Rev 2.1 added 0xC aux_data_trailer)"
+        spec_ref: "rev0 §Channel set descriptor byte 11"
+
+      - name: subscans_exponent
+        offset: 11               # spec byte 12 high nibble
+        nibble: high
+        type: bcd_nibble
+        description: "Sub-scan exponent S/C; sub-scans per base scan = 2^S/C"
+        spec_ref: "rev0 §Channel set descriptor byte 12"
+
+      - name: channel_gain
+        offset: 11               # spec byte 12 low nibble
+        nibble: low
+        type: bcd_nibble
+        description: "Channel gain code J (system-defined)"
+        spec_ref: "rev0 §Channel set descriptor byte 12"
+
+      - name: alias_filter_freq
+        offset: 12               # spec bytes 13-14
+        length: 2
+        type: bcd_digits
+        description: "Alias filter -3 dB frequency (4 BCD digits, Hz)"
+        spec_ref: "rev0 §Channel set descriptor byte 13-14"
+
+      - name: alias_filter_slope
+        offset: 14               # spec bytes 15-16
+        length: 2
+        type: bcd_digits
+        description: "Alias filter slope (4 BCD digits, dB/octave)"
+        spec_ref: "rev0 §Channel set descriptor byte 15-16"
+
+      - name: low_cut_filter
+        offset: 16               # spec bytes 17-18
+        length: 2
+        type: bcd_digits
+        description: "Low-cut filter -3 dB frequency (4 BCD digits, Hz)"
+        spec_ref: "rev0 §Channel set descriptor byte 17-18"
+
+      - name: low_cut_filter_slope
+        offset: 18               # spec bytes 19-20
+        length: 2
+        type: bcd_digits
+        description: "Low-cut filter slope (4 BCD digits, dB/octave)"
+        spec_ref: "rev0 §Channel set descriptor byte 19-20"
+
+      - name: notch_filter_1
+        offset: 20               # spec bytes 21-22
+        length: 2
+        type: bcd_digits
+        description: "First notch filter centre frequency (4 BCD digits, Hz)"
+        spec_ref: "rev0 §Channel set descriptor byte 21-22"
+
+      - name: notch_filter_2
+        offset: 22               # spec bytes 23-24
+        length: 2
+        type: bcd_digits
+        description: "Second notch filter centre frequency"
+        spec_ref: "rev0 §Channel set descriptor byte 23-24"
+
+      - name: notch_filter_3
+        offset: 24               # spec bytes 25-26
+        length: 2
+        type: bcd_digits
+        description: "Third notch filter centre frequency"
+        spec_ref: "rev0 §Channel set descriptor byte 25-26"
+
+  # ── Demultiplexed Trace Header (20 bytes) ───────────────────────────────────
+  # Rev 0 demux trace header is 20 bytes flat — no trace-extension blocks.
+  # Bytes 16-20 are reserved-zero. Rev 1.0+ kept the same 20-byte layout but
+  # added optional extension blocks counted via a field that doesn't exist in
+  # Rev 0. The reader treats Rev 0 traces as having zero trace-extension blocks.
+  demux_trace_header:
+    size: 20
+    reserved:
+      - { offset: 9,  length: 1, note: "spec: zero" }
+      - { offset: 11, length: 1, note: "spec: zero" }
+      - { offset: 15, length: 5, note: "spec: zero (bytes 16-20)" }
+    fields:
+
+      - name: file_number
+        offset: 0                # spec bytes 1-2
+        length: 2
+        type: bcd_digits
+        description: "File number (4 BCD digits; mirrors GH1.file_number)"
+        spec_ref: "rev0 §Trace header byte 1-2"
+
+      - name: scan_type_number
+        offset: 2                # spec byte 3
+        length: 1
+        type: bcd_digits
+        description: "Scan type number (mirrors CSD.scan_type_number)"
+        spec_ref: "rev0 §Trace header byte 3"
+
+      - name: channel_set_number
+        offset: 3                # spec byte 4
+        length: 1
+        type: bcd_digits
+        description: "Channel set number (mirrors CSD.channel_set_number)"
+        spec_ref: "rev0 §Trace header byte 4"
+
+      - name: trace_number
+        offset: 4                # spec bytes 5-6
+        length: 2
+        type: bcd_digits
+        description: "Channel/trace number within channel set (4 BCD digits)"
+        spec_ref: "rev0 §Trace header byte 5-6"
+
+      - name: first_timing_word
+        offset: 6                # spec bytes 7-9
+        length: 3
+        type: uint24
+        description: "First timing word — milliseconds from time zero to start of scan, fixed-point (LSB = 1/256 ms)"
+        spec_ref: "rev0 §Trace header byte 7-9"
+
+      - name: sample_skew
+        offset: 10               # spec byte 11
+        length: 1
+        type: uint8
+        description: "Sample skew of first sample (binary fraction of base scan interval; 0x80 = ½ scan)"
+        spec_ref: "rev0 §Trace header byte 11"
+
+      - name: time_break_window_end
+        offset: 12               # spec bytes 13-15
+        length: 3
+        type: uint24
+        description: "Time-break window end (binary milliseconds, LSB = 1/256 ms)"
+        spec_ref: "rev0 §Trace header byte 13-15"

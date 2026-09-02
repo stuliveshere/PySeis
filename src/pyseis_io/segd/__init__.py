@@ -1,6 +1,25 @@
-"""Compatibility package that re-exports the construct-based SEG-D implementation."""
+"""
+SEG-D reader, writer, schema engine, validator, and importer/exporter package.
+"""
 
-from .segd import SegD
+from .importer import SEGDImporter
+from .exporter import SEGDExporter
+from .reader import SEGDReader
+from .writer import SEGDWriter
+from .scanner import CorpusScanner
+from .schema import SchemaManager
+from .fill_plan import TraceFillPlan
 
-__all__ = ["SegD"]
+# Alias SegD for backward compatibility
+SegD = SEGDReader
 
+__all__ = [
+    "SEGDImporter",
+    "SEGDExporter",
+    "SEGDReader",
+    "SEGDWriter",
+    "CorpusScanner",
+    "SchemaManager",
+    "TraceFillPlan",
+    "SegD"
+]

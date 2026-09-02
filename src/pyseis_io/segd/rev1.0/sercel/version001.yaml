@@ -1,0 +1,10 @@
+# Sercel — SEG-D Rev1.0 baseline variant (covers 428XL and Unite recorders).
+# No structural deltas vs. rev1.0/sercel/standard.yaml — the 428 doc lists
+# only Extended-Header byte additions across firmware revisions, all beyond
+# byte 596 (out of scope for the current import contract).
+
+id: version001
+
+firmware_labels:
+  - id: sercel_428xl_unite_rev1
+    operator_label: "Sercel 428XL / Unite SEG-D Rev1 baseline"

@@ -1,0 +1,67 @@
+# Input/Output, Inc. — SEG-D Rev0 manufacturer-common ProMAX/SeisSpace map
+#
+# Bindings are kept minimal because there's no manufacturer spec to tell us
+# how source/receiver geometry is encoded in the extended/external headers.
+# What's bound here is what the SEG-D Rev 0 standard alone gives us:
+# identity, channel-set sizing/timing, shot-time fields, and gain.
+#
+# Source/receiver coordinates and line/point identifiers are intentionally
+# absent. If a survey workflow needs them, route the relevant raw bytes
+# through SegdInputProc's MAPPINGS_TEXT custom-mapping mechanism (so
+# project-specific knowledge stays out of the manufacturer YAML).
+
+resolvers:
+  # Rev 0 has no canonical file-level sample_rate or samples_per_trace field;
+  # ChannelSetInfo derives both per-CSD when these resolvers are absent
+  # (sample_interval_micros falls back to GH1.base_scan_interval × 62.5;
+  # samples_per_trace falls back to (end_time − start_time) / interval).
+  sg:
+    ffid:  general_header_1.file_number
+  rg:
+    ffid:  general_header_1.file_number
+  cg:
+    ffid:  general_header_1.file_number
+
+mappings:
+  sg:
+    FFID:      general_header_1.file_number
+    CHAN:      demux_trace_header.trace_number
+    TRC_TYPE:  channel_set_descriptor.channel_type
+    SCANTYPE:  channel_set_descriptor.scan_type_number
+    CHAN_SET:  channel_set_descriptor.channel_set_number
+    SEGDGAIN:  channel_set_descriptor.mp_factor
+    TLIVE_S:   channel_set_descriptor.channel_set_start_time     # 2-ms units; consumer scales
+    TFULL_S:   channel_set_descriptor.channel_set_end_time
+    SAMPRT:    { field: general_header_1.base_scan_interval, scale: 62.5 }   # 1/16 ms → microseconds
+    YER_SHOT:  general_header_1.year
+    DAY_SHOT:  general_header_1.julian_day
+    TIM_SHOT:  general_header_1.time_hhmmss
+
+  rg:
+    # Same identity / timing bindings — there's no source/receiver swap to
+    # do at this layer because we don't bind any geometry fields.
+    FFID:      general_header_1.file_number
+    CHAN:      demux_trace_header.trace_number
+    TRC_TYPE:  channel_set_descriptor.channel_type
+    SCANTYPE:  channel_set_descriptor.scan_type_number
+    CHAN_SET:  channel_set_descriptor.channel_set_number
+    SEGDGAIN:  channel_set_descriptor.mp_factor
+    TLIVE_S:   channel_set_descriptor.channel_set_start_time
+    TFULL_S:   channel_set_descriptor.channel_set_end_time
+    SAMPRT:    { field: general_header_1.base_scan_interval, scale: 62.5 }
+    YER_SHOT:  general_header_1.year
+    DAY_SHOT:  general_header_1.julian_day
+    TIM_SHOT:  general_header_1.time_hhmmss
+
+  cg:
+    FFID:      general_header_1.file_number
+    CHAN:      demux_trace_header.trace_number
+    TRC_TYPE:  channel_set_descriptor.channel_type
+    SCANTYPE:  channel_set_descriptor.scan_type_number
+    CHAN_SET:  channel_set_descriptor.channel_set_number
+    TLIVE_S:   channel_set_descriptor.channel_set_start_time
+    TFULL_S:   channel_set_descriptor.channel_set_end_time
+    SAMPRT:    { field: general_header_1.base_scan_interval, scale: 62.5 }
+    YER_SHOT:  general_header_1.year
+    DAY_SHOT:  general_header_1.julian_day
+    TIM_SHOT:  general_header_1.time_hhmmss

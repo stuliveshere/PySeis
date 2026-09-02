@@ -1,0 +1,74 @@
+# Sercel — SEG-D Rev1.0 manufacturer-common ProMAX/SeisSpace map
+# Identical bindings to rev2.1/sercel/standard.map.yaml (the file format is
+# byte-equivalent at the block level — only the SEG-D revision identifier and
+# the tape-label storage-unit structure change between Rev1 and Rev2.1).
+
+resolvers:
+  sg:
+    ffid:                    general_header_2.expanded_file_number
+    sample_interval_micros:  file_extended_header.sample_rate_us
+    samples_per_trace:       file_extended_header.samples_per_trace
+  rg:
+    ffid:                    general_header_2.expanded_file_number
+    sample_interval_micros:  file_extended_header.sample_rate_us
+    samples_per_trace:       file_extended_header.samples_per_trace
+  cg:
+    ffid:                    general_header_2.expanded_file_number
+    sample_interval_micros:  file_extended_header.sample_rate_us
+    samples_per_trace:       file_extended_header.samples_per_trace
+
+mappings:
+  sg:
+    FFID:      general_header_2.expanded_file_number
+    CHAN:      demux_trace_header.trace_number
+    TRC_TYPE:  channel_set_descriptor.channel_type
+    SCANTYPE:  channel_set_descriptor.scan_type_number
+    CHAN_SET:  channel_set_descriptor.channel_set_number
+    NUMSMP:    file_extended_header.samples_per_trace
+    SAMPRT:    file_extended_header.sample_rate_us       # already microseconds
+    S_LINE:    general_header_3.source_line_int
+    SOU_SLOC:  general_header_3.source_point_int
+    R_LINE:    receiver_geometry.receiver_line_number
+    SRF_SLOC:  receiver_geometry.receiver_point_number
+    SOU_XD:    file_extended_header.source_easting       # already metres
+    SOU_YD:    file_extended_header.source_northing
+    SOU_ELEV:  file_extended_header.source_elevation
+    REC_XD:    receiver_coords.receiver_easting
+    REC_YD:    receiver_coords.receiver_northing
+    REC_ELEV:  receiver_coords.receiver_elevation
+    AOFFSET:   control_unit.seismic_trace_offset
+    TLIVE_S:   channel_set_descriptor.channel_set_start_time
+    TFULL_S:   channel_set_descriptor.channel_set_end_time
+
+  rg:
+    FFID:      general_header_2.expanded_file_number
+    CHAN:      demux_trace_header.trace_number
+    TRC_TYPE:  channel_set_descriptor.channel_type
+    SCANTYPE:  channel_set_descriptor.scan_type_number
+    CHAN_SET:  channel_set_descriptor.channel_set_number
+    NUMSMP:    file_extended_header.samples_per_trace
+    SAMPRT:    file_extended_header.sample_rate_us
+    R_LINE:    general_header_3.source_line_int
+    SRF_SLOC:  general_header_3.source_point_int
+    S_LINE:    receiver_geometry.receiver_line_number
+    SOU_SLOC:  receiver_geometry.receiver_point_number
+    SOU_XD:    file_extended_header.source_easting
+    SOU_YD:    file_extended_header.source_northing
+    SOU_ELEV:  file_extended_header.source_elevation
+    REC_XD:    receiver_coords.receiver_easting
+    REC_YD:    receiver_coords.receiver_northing
+    REC_ELEV:  receiver_coords.receiver_elevation
+    AOFFSET:   control_unit.seismic_trace_offset
+    TLIVE_S:   channel_set_descriptor.channel_set_start_time
+    TFULL_S:   channel_set_descriptor.channel_set_end_time
+
+  cg:
+    FFID:      general_header_2.expanded_file_number
+    CHAN:      demux_trace_header.trace_number
+    TRC_TYPE:  channel_set_descriptor.channel_type
+    SCANTYPE:  channel_set_descriptor.scan_type_number
+    CHAN_SET:  channel_set_descriptor.channel_set_number
+    NUMSMP:    file_extended_header.samples_per_trace
+    SAMPRT:    file_extended_header.sample_rate_us
+    TLIVE_S:   channel_set_descriptor.channel_set_start_time
+    TFULL_S:   channel_set_descriptor.channel_set_end_time

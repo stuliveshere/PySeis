@@ -1,0 +1,59 @@
+# SEG-Y Revision 1 (2002 Standard) Block Specification
+# Reference: SEG Technical Standards Committee, "SEG-Y Revision 1 Data Exchange Format" (2002)
+#            docs/standards/seg_y_rev1.pdf
+
+extends: "../rev0/base.yaml"
+
+blocks:
+  binary_header:
+    fields:
+      - name: segyrev
+        offset: 300
+        length: 2
+        type: int16
+        description: "SEG-Y format revision number (0x0100 = Rev 1.0)"
+        spec_ref: "seg_y_rev1 §3.2 p.7"
+
+      - name: fixedlen
+        offset: 302
+        length: 2
+        type: int16
+        description: "Fixed length trace flag: 1=All traces have same length, 0=Variable length"
+        spec_ref: "seg_y_rev1 §3.2 p.7"
+
+      - name: numhdr
+        offset: 304
+        length: 2
+        type: int16
+        description: "Number of 3200-byte Extended Textual Headers following binary header"
+        spec_ref: "seg_y_rev1 §3.2 p.7"
+
+  trace_header:
+    fields:
+      - name: int32_cdp_x
+        offset: 180
+        length: 4
+        type: int32
+        description: "X coordinate of ensemble (CDP) position"
+        spec_ref: "seg_y_rev1 §3.3 p.16"
+
+      - name: int32_cdp_y
+        offset: 184
+        length: 4
+        type: int32
+        description: "Y coordinate of ensemble (CDP) position"
+        spec_ref: "seg_y_rev1 §3.3 p.16"
+
+      - name: inline_no
+        offset: 188
+        length: 4
+        type: int32
+        description: "In-line number (3D line number)"
+        spec_ref: "seg_y_rev1 §3.3 p.16"
+
+      - name: crossline_no
+        offset: 192
+        length: 4
+        type: int32
+        description: "Cross-line number (3D trace number)"
+        spec_ref: "seg_y_rev1 §3.3 p.16"

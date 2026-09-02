@@ -1,0 +1,240 @@
+# SmartSolo (DTCC) — SEG-D Rev3.1 manufacturer-common structural (schema v2)
+# Structural overrides on top of rev3.1/base.yaml, common to all SmartSolo
+# firmware generations that write SEG-D 3.1 on the wire (currently only version001).
+#
+# Structural load order:  rev3.1/base.yaml  →  this file  →  versionNNN.yaml
+# Mapping load order:     standard.map.yaml  →  versionNNN.map.yaml
+#
+# Differences from the Rev2.1 SmartSolo manufacturer layer:
+#   - No SmartSolo general_header_3 here: Rev3.1 standard GH3 = Timestamp.
+#     SmartSolo moves source line/point to GH8; defined in the variant YAML
+#     with `replace: true` to override the standard Line-ID GH8.
+#   - File extended header: 16 × 32 = 512 bytes (not 1024 as in Rev2.1).
+#   - External header: 10 × 32 = 320 bytes (not 1024); SPS X/Y/Z always
+#     present (not a variant option).
+#   - All 7 trace-extension blocks differ from Rev2.1 and are defined in
+#     version001.yaml.
+
+manufacturer: SmartSolo
+manufacturer_alias: DTCC
+code: 0x61
+format_codes:
+  - 8058
+
+# Reader-side gate: held back pending #30. The SchemaLoader registry will
+# discover this cell but the reader's lookupCell() refuses to dispatch to a
+# disabled cell. Flip to `true` (or remove the line) to enable Rev3.1.
+enabled: false
+
+gather_type:
+  block: general_header_1
+  offset: 23
+  nibble: low
+  type: bcd_nibble
+  values:
+    0: SG
+    1: RG
+    2: CG
+
+blocks:
+
+  # ── File Extended Header — 16 × 32 = 512 bytes ───────────────────────────────
+  file_extended_header:
+    size: 512
+    reserved:
+      - { offset: 38, length: 474, note: "SmartSolo uses first 38 bytes; remainder is allocated padding" }
+    fields:
+      - name: acq_length_ms
+        offset: 0
+        length: 4
+        type: int32
+        description: "Acquisition length in milliseconds"
+        spec_ref: "smartsolo Rev3.1 §2.1.9"
+
+      - name: sample_rate_us
+        offset: 4
+        length: 4
+        type: int32
+        description: "Sampling rate in microseconds"
+        spec_ref: "smartsolo Rev3.1 §2.1.9"
+
+      - name: total_traces
+        offset: 8
+        length: 4
+        type: int32
+        description: "Total number of traces in record"
+        spec_ref: "smartsolo Rev3.1 §2.1.9"
+
+      - name: samples_per_trace
+        offset: 12
+        length: 4
+        type: int32
+        description: "Number of samples per trace"
+        spec_ref: "smartsolo Rev3.1 §2.1.9"
+
+      - name: seismic_traces
+        offset: 16
+        length: 4
+        type: int32
+        description: "Number of seismic traces"
+        spec_ref: "smartsolo Rev3.1 §2.1.9"
+
+      - name: aux_traces
+        offset: 20
+        length: 4
+        type: int32
+        description: "Number of auxiliary traces"
+        spec_ref: "smartsolo Rev3.1 §2.1.9"
+
+      - name: dead_seismic_traces
+        offset: 24
+        length: 4
+        type: int32
+        description: "Number of dead seismic traces"
+        spec_ref: "smartsolo Rev3.1 §2.1.9"
+
+      - name: live_seismic_traces
+        offset: 28
+        length: 4
+        type: int32
+        description: "Number of live seismic traces"
+        spec_ref: "smartsolo Rev3.1 §2.1.9"
+
+      - name: source_type
+        offset: 32
+        length: 4
+        type: int32
+        description: "Source type: 0 = no source, 1 = impulsive"
+        spec_ref: "smartsolo Rev3.1 §2.1.9"
+
+      - name: gather_type_ext
+        offset: 36
+        length: 2
+        type: int16
+        values:
+          0: sg
+          1: rg
+          2: cg
+        description: "Gather type (duplicates GH1 byte 24L)"
+        spec_ref: "smartsolo Rev3.1 §2.1.9"
+
+      # bytes 38-511: reserved
+
+  # ── External Header — 10 × 32 = 320 bytes ────────────────────────────────────
+  # First 58 bytes carry data. SPS X/Y/Z at 46-57 are always present in Rev3.1.
+  external_header:
+    size: 320
+    reserved:
+      - { offset: 40, length: 2, note: "spec: not used" }
+      - { offset: 58, length: 262, note: "SmartSolo uses first 58 bytes; remainder is allocated padding" }
+    fields:
+      - name: external_ffid
+        offset: 0
+        length: 4
+        type: int32
+        description: "Field file number (external FFID)"
+        spec_ref: "smartsolo Rev3.1 §2.1.10"
+
+      - name: file_number
+        offset: 4
+        length: 4
+        type: int32
+        description: "File number (internally generated)"
+        spec_ref: "smartsolo Rev3.1 §2.1.10"
+
+      - name: source_easting_cm
+        offset: 8
+        length: 4
+        type: int32
+        description: "Source easting in cm → m. In RG mode: receiver easting. Null for CG."
+        spec_ref: "smartsolo Rev3.1 §2.1.10"
+
+      - name: source_northing_cm
+        offset: 12
+        length: 4
+        type: int32
+        description: "Source northing in cm → m. In RG mode: receiver northing. Null for CG."
+        spec_ref: "smartsolo Rev3.1 §2.1.10"
+
+      - name: source_elevation_cm
+        offset: 16
+        length: 4
+        type: int32
+        description: "Source elevation in cm → m. In RG mode: receiver elevation. Null for CG."
+        spec_ref: "smartsolo Rev3.1 §2.1.10"
+
+      - name: gps_lat_int
+        offset: 20
+        length: 4
+        type: int32
+        description: "Integer part of source GPS latitude DDMMSS. In RG/CG mode: receiver GPS."
+        spec_ref: "smartsolo Rev3.1 §2.1.10"
+
+      - name: gps_lat_frac
+        offset: 24
+        length: 2
+        type: uint16
+        fraction_of: gps_lat_int
+        description: "Source GPS latitude fractional part (value = reading / 65535)"
+        spec_ref: "smartsolo Rev3.1 §2.1.10"
+
+      - name: gps_lon_int
+        offset: 26
+        length: 4
+        type: int32
+        description: "Integer part of source GPS longitude DDDMMSS. In RG/CG mode: receiver GPS."
+        spec_ref: "smartsolo Rev3.1 §2.1.10"
+
+      - name: gps_lon_frac
+        offset: 30
+        length: 2
+        type: uint16
+        fraction_of: gps_lon_int
+        description: "Source GPS longitude fractional part (value = reading / 65535)"
+        spec_ref: "smartsolo Rev3.1 §2.1.10"
+
+      - name: tb_gps_time_us_ext
+        offset: 32
+        length: 8
+        type: int64
+        description: "TB GPS time in microseconds (file-level; per-trace value in tb_gps trace ext block)"
+        spec_ref: "smartsolo Rev3.1 §2.1.10"
+
+      # bytes 40-41: not used
+
+      - name: source_gps_height_cm
+        offset: 42
+        length: 4
+        type: int32
+        description: "Source GPS height in cm"
+        spec_ref: "smartsolo Rev3.1 §2.1.10"
+
+      - name: sps_source_x_cm
+        offset: 46
+        length: 4
+        type: int32
+        description: "SPS source X in cm. 0 if not SG."
+        spec_ref: "smartsolo Rev3.1 §2.1.10"
+
+      - name: sps_source_y_cm
+        offset: 50
+        length: 4
+        type: int32
+        description: "SPS source Y in cm. 0 if not SG."
+        spec_ref: "smartsolo Rev3.1 §2.1.10"
+
+      - name: sps_source_z_cm
+        offset: 54
+        length: 4
+        type: int32
+        description: "SPS source Z in cm. 0 if not SG."
+        spec_ref: "smartsolo Rev3.1 §2.1.10"
+
+      # bytes 58-319: reserved
+
+# ── Trace Extension Headers ──────────────────────────────────────────────────
+# 7 blocks × 32 bytes = 224 bytes per trace.
+# All 7 blocks are manufacturer-defined in Rev3.1 and live in version001.yaml.
+trace_extensions:
+  count: 7
+  block_size: 32

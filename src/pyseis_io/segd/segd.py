@@ -1,6 +1,5 @@
-"""Backward-compatible shim for the construct-based SEG-D reader."""
+"""Backward-compatible alias for SEGDReader."""
 
-from pyseis_io.legacy.segd_construct.segd import SegD
+from .reader import SEGDReader as SegD
 
 __all__ = ["SegD"]
-

@@ -1,0 +1,22 @@
+# SEG-Y Revision 2 (2017 Standard) Block Specification
+# Reference: SEG Technical Standards Committee, "SEG-Y Revision 2.0 Data Exchange Format" (2017)
+#            docs/standards/seg_y_rev2.pdf
+
+extends: "../rev1/base.yaml"
+
+blocks:
+  binary_header:
+    fields:
+      - name: segyrev
+        offset: 300
+        length: 2
+        type: int16
+        description: "SEG-Y format revision number (0x0200 = Rev 2.0)"
+        spec_ref: "seg_y_rev2 §3.2 p.9"
+
+      - name: extended_numhdr
+        offset: 306
+        length: 4
+        type: int32
+        description: "Extended number of 3200-byte Textual Headers (if numhdr = -1)"
+        spec_ref: "seg_y_rev2 §3.2 p.10"

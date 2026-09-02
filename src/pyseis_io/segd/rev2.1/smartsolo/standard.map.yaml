@@ -1,0 +1,96 @@
+# SmartSolo (DTCC) — SEG-D Rev2.1 manufacturer-common ProMAX/SeisSpace map
+# Extracted from rev2.1/smartsolo/standard.yaml (schema v2 split).
+#
+# Load order (structural):  rev2.1/base.yaml  →  rev2.1/smartsolo/standard.yaml
+#                                              →  rev2.1/smartsolo/versionNNN.yaml
+# Load order (mapping):     rev2.1/smartsolo/standard.map.yaml
+#                                              →  rev2.1/smartsolo/versionNNN.map.yaml
+#
+# Map layers contain ONLY `resolvers:` and `mappings:`. No structural keys.
+# A variant map file adds deltas via name-keyed later-wins merge. Setting a
+# value to `null` removes the binding.
+#
+# Short form:  HEADER: block.field                    (identity transform)
+# Long  form:  HEADER: { field: block.field, scale: 0.01, offset: 0 }
+
+# ── Structural concept resolvers (gather-type keyed) ──────────────────────────
+# Canonical source for each logical structural concept the reader/validator
+# consults. One entry per (gather_type, concept) pair; no sentinels, no
+# fallback ladders. Variants may override.
+resolvers:
+  sg:
+    ffid:                    general_header_2.expanded_file_number
+    sample_interval_micros:  file_extended_header.sample_rate_us
+    samples_per_trace:       file_extended_header.samples_per_trace
+  rg:
+    ffid:                    general_header_2.expanded_file_number
+    sample_interval_micros:  file_extended_header.sample_rate_us
+    samples_per_trace:       file_extended_header.samples_per_trace
+  cg:
+    ffid:                    general_header_2.expanded_file_number
+    sample_interval_micros:  file_extended_header.sample_rate_us
+    samples_per_trace:       file_extended_header.samples_per_trace
+
+# ── ProMAX / SeisSpace import mappings (gather-type keyed) ───────────────────
+# The full SmartSolo Rev 2.1 default import contract. Variant map files add
+# mappings for fields only certain firmwares populate (e.g. SPS coords in v2).
+mappings:
+  sg:
+    FFID:      general_header_2.expanded_file_number
+    CHAN:      demux_trace_header.trace_number
+    TRC_TYPE:  channel_set_descriptor.channel_type
+    SEGDGAIN:  channel_set_descriptor.mp_factor
+    SCANTYPE:  channel_set_descriptor.scan_type_number
+    CHAN_SET:  channel_set_descriptor.channel_set_number
+    S_LINE:    general_header_3.source_line_int
+    SOU_SLOC:  general_header_3.source_point_int
+    R_LINE:    receiver_geometry.rcvr_line_int
+    SRF_SLOC:  receiver_geometry.rcvr_point_int
+    SOU_XD:    { field: external_header.source_easting_cm,  scale: 0.01 }   # cm → m
+    SOU_YD:    { field: external_header.source_northing_cm, scale: 0.01 }
+    SOU_ELEV:  { field: external_header.source_elevation_cm, scale: 0.01 }
+    REC_XD:    { field: receiver_coords.rcvr_easting_cm,  scale: 0.01 }
+    REC_YD:    { field: receiver_coords.rcvr_northing_cm, scale: 0.01 }
+    REC_ELEV:  { field: receiver_coords.rcvr_elevation_cm, scale: 0.01 }
+    TLIVE_S:   channel_set_descriptor.channel_set_start_time
+    TFULL_S:   channel_set_descriptor.channel_set_end_time
+
+  rg:
+    # SmartSolo PDF: "In case of RG or CG, source coord bytes become receiver coords;
+    # receiver coord bytes (in trace ext) become source coords."
+    FFID:      general_header_2.expanded_file_number
+    CHAN:      demux_trace_header.trace_number
+    TRC_TYPE:  channel_set_descriptor.channel_type
+    SEGDGAIN:  channel_set_descriptor.mp_factor
+    SCANTYPE:  channel_set_descriptor.scan_type_number
+    CHAN_SET:  channel_set_descriptor.channel_set_number
+    # GH3 source line/point bytes now carry receiver in RG
+    R_LINE:    general_header_3.source_line_int
+    SRF_SLOC:  general_header_3.source_point_int
+    # receiver_geometry bytes now carry source in RG
+    S_LINE:    receiver_geometry.rcvr_line_int
+    SOU_SLOC:  receiver_geometry.rcvr_point_int
+    REC_XD:    { field: external_header.source_easting_cm,  scale: 0.01 }
+    REC_YD:    { field: external_header.source_northing_cm, scale: 0.01 }
+    REC_ELEV:  { field: external_header.source_elevation_cm, scale: 0.01 }
+    # Source coords from the universal "Source file" slot at TH-3 bytes 12-23.
+    # Spec §3.2 says bytes 0-11 carry source in RG, but recorders frequently
+    # leave that slot at 0 and put source in bytes 12-23 instead — verified
+    # empirically against the SmartSolo corpus (both v1 and v2 RG files).
+    SOU_XD:    { field: receiver_coords.source_file_easting_cm,  scale: 0.01 }
+    SOU_YD:    { field: receiver_coords.source_file_northing_cm, scale: 0.01 }
+    SOU_ELEV:  { field: receiver_coords.source_file_elevation_cm, scale: 0.01 }
+    TLIVE_S:   channel_set_descriptor.channel_set_start_time
+    TFULL_S:   channel_set_descriptor.channel_set_end_time
+
+  cg:
+    # Continuous gather — source/receiver position fields are suppressed
+    # because neither concept applies. Only identity + timing bindings.
+    FFID:      general_header_2.expanded_file_number
+    CHAN:      demux_trace_header.trace_number
+    TRC_TYPE:  channel_set_descriptor.channel_type
+    SEGDGAIN:  channel_set_descriptor.mp_factor
+    SCANTYPE:  channel_set_descriptor.scan_type_number
+    CHAN_SET:  channel_set_descriptor.channel_set_number
+    TLIVE_S:   channel_set_descriptor.channel_set_start_time
+    TFULL_S:   channel_set_descriptor.channel_set_end_time

@@ -1,0 +1,857 @@
+# SEG-D Rev3.1 base — standard block definitions (schema v2)
+# Bottom layer of the 4-layer stack: base → <mfr>/standard → <mfr>/versionNNN,
+# with paired <mfr>/*.map.yaml files for ProMAX bindings. See etc/segd/README.md.
+# Reference: SEG Technical Standards Committee, "SEG-D Revision 3.1" (October 2015)
+#            javadocs/segd/seg_d_rev3_1-oct2015.pdf
+#
+# All offsets are 0-based from the start of the named block.
+#
+# Rev3.1 structural changes from Rev2.1:
+#   - GH2: extended_header_blocks_count = 3 bytes; general_trailer_blocks = 4
+#     bytes; extended_record_length = 4 bytes in µs; new extended_skew_blocks,
+#     extended_gh_blocks, dominant_sampling_interval; external_header_blocks_count
+#     = 3 bytes; header_block_type sentinel byte at offset 31.
+#   - GH3 = standard Timestamp block (GPS-referenced timestamps).
+#   - GH4-GH8 = standard ASCII identification blocks (vessel/crew, survey area,
+#     client, job, line). SmartSolo overrides GH8 with Source Description — see
+#     rev3.1/smartsolo/version001.yaml with replace:true.
+#   - Channel set descriptor is 96 bytes (3 × 32-byte blocks) per channel set.
+#     mp_factor is now 4-byte IEEE float; channel_count is 3-byte unsigned binary.
+#   - CHAN_SET is read from the channel set descriptor, not from the demux trace
+#     header.
+
+blocks:
+
+  # ── General Header 1 (32 bytes) ─────────────────────────────────────────────
+  # Structurally identical to Rev2.1 GH1 at the field positions used here.
+  general_header_1:
+    number: 1
+    size: 32
+    reserved:
+      - { offset: 19, length: 3, note: "spec: not used; record as zero" }
+      - { offset: 24, length: 1, note: "spec: not used (byte 23 low nibble reused by manufacturers for gather_type)" }
+    fields:
+
+      - name: file_number
+        offset: 0
+        length: 2
+        type: bcd_digits
+        description: "File number 0-9999 (FFFF = use expanded_file_number in GH2)"
+        spec_ref: "rev3.1 §GH1"
+
+      - name: format_code
+        offset: 2
+        length: 2
+        type: bcd_digits
+        description: "Data sample format: 8058=32-bit IEEE demultiplexed"
+        spec_ref: "rev3.1 §GH1"
+
+      - name: general_constants
+        offset: 4
+        length: 6
+        type: bcd_digits
+        description: "General constants K1-K12 (12 BCD digits; system-defined recording parameters)"
+        spec_ref: "rev3.1 §GH1"
+
+      - name: year
+        offset: 10
+        length: 1
+        type: bcd_digits
+        description: "Last two digits of year (BCD; e.g., 0x24 = 2024)"
+        spec_ref: "rev3.1 §GH1"
+
+      - name: additional_gh_blocks
+        offset: 11
+        nibble: high
+        type: bcd_nibble
+        description: "Number of additional 32-byte GH blocks after GH1 (Rev3.1 standard = 7 for GH2-GH8)"
+        spec_ref: "rev3.1 §GH1"
+
+      - name: julian_day
+        offset: 11
+        nibble: low
+        length: 2
+        type: bcd_digits
+        description: "Julian day 1-366 (3 BCD digits: low nibble of spec byte 12 plus spec byte 13)"
+        spec_ref: "rev3.1 §GH1"
+
+      - name: time_hhmmss
+        offset: 13
+        length: 3
+        type: bcd_digits
+        description: "UTC time HHMMSS (6 BCD digits)"
+        spec_ref: "rev3.1 §GH1"
+
+      - name: manufacturer_code
+        offset: 16
+        length: 1
+        type: bcd_digits
+        description: "Manufacturer code (0x61 = SmartSolo/DTCC; see spec Appendix A)"
+        spec_ref: "rev3.1 §GH1"
+
+      - name: manufacturer_serial_number
+        offset: 17
+        length: 2
+        type: bcd_digits
+        description: "Manufacturer serial number (4 BCD digits)"
+        spec_ref: "rev3.1 §GH1"
+
+      # bytes 20-22 (offsets 19-21): not used
+
+      - name: base_scan_interval
+        offset: 22
+        length: 1
+        type: uint8
+        values:
+          1: 1_over_16_ms
+          2: 1_over_8_ms
+          4: 1_over_4_ms
+          8: 1_over_2_ms
+          16: 1_ms
+          32: 2_ms
+          64: 4_ms
+          128: 8_ms
+        description: "Base scan interval; raw byte is multiples of 1/16 ms"
+        spec_ref: "rev3.1 §GH1"
+
+      - name: polarity
+        offset: 23
+        nibble: high
+        type: bcd_nibble
+        values:
+          0: untested
+          1: zero
+          2: deg_45
+          3: deg_90
+          4: deg_135
+          5: deg_180
+          6: deg_225
+          7: deg_270
+          8: deg_315
+        description: "Polarity code"
+        spec_ref: "rev3.1 §GH1"
+
+      # byte 24 low nibble (offset 23L): manufacturers may repurpose for gather_type
+
+      - name: record_type
+        offset: 25
+        length: 1
+        type: uint8
+        values:
+          0x01: other
+          0x02: test
+          0x04: parallel_channel_test
+          0x06: direct_channel_test
+          0x08: normal
+        description: "Record type (low nibble bits 0-3; high nibble unused)"
+        spec_ref: "rev3.1 §GH1"
+
+      - name: record_length
+        offset: 26
+        length: 1
+        type: bcd_digits
+        description: "Record length R1,R2 BCD digits. FFF = use extended_record_length_us from GH2."
+        spec_ref: "rev3.1 §GH1"
+
+      - name: scan_types_per_record
+        offset: 27
+        length: 1
+        type: bcd_digits
+        description: "Number of scan types per record (1-99)"
+        spec_ref: "rev3.1 §GH1"
+
+      - name: channel_sets_per_scan
+        offset: 28
+        length: 1
+        type: bcd_digits
+        description: "Channel sets per scan type (FF = use extended_channel_sets from GH2)"
+        spec_ref: "rev3.1 §GH1"
+
+      - name: skew_blocks
+        offset: 29
+        length: 1
+        type: bcd_digits
+        description: "Number of 32-byte sample skew fields (0 = none)"
+        spec_ref: "rev3.1 §GH1"
+
+      - name: extended_header_blocks
+        offset: 30
+        length: 1
+        type: bcd_digits
+        description: "Number of 32-byte extended header blocks (FF = use extended_header_blocks_count from GH2)"
+        spec_ref: "rev3.1 §GH1"
+
+      - name: external_header_blocks
+        offset: 31
+        length: 1
+        type: bcd_digits
+        description: "Number of 32-byte external header blocks (FF = use external_header_blocks_count from GH2)"
+        spec_ref: "rev3.1 §GH1"
+
+  # ── General Header 2 (32 bytes) ─────────────────────────────────────────────
+  # Rev3.1 GH2 differs substantially from Rev2.1 — see header comments.
+  general_header_2:
+    number: 2
+    size: 32
+    reserved:
+      - { offset: 20, length: 2, note: "spec: undefined" }
+      - { offset: 30, length: 1, note: "spec: undefined" }
+    fields:
+
+      - name: expanded_file_number
+        offset: 0
+        length: 3
+        type: uint24
+        description: "Expanded file number (use when GH1 file_number = 0xFFFF)"
+        spec_ref: "rev3.1 §GH2"
+
+      - name: extended_channel_sets
+        offset: 3
+        length: 2
+        type: uint16
+        description: "Extended channel sets per scan (use when GH1 channel_sets_per_scan = FF)"
+        spec_ref: "rev3.1 §GH2"
+
+      - name: extended_header_blocks_count
+        offset: 5                    # 3 bytes in Rev3.1 (was 2 bytes in Rev2.1)
+        length: 3
+        type: uint24
+        description: "Extended header blocks count (use when GH1 extended_header_blocks = FF)"
+        spec_ref: "rev3.1 §GH2"
+
+      - name: extended_skew_blocks
+        offset: 8                    # NEW in Rev3.1
+        length: 2
+        type: uint16
+        description: "Extended skew blocks count (0 if unused)"
+        spec_ref: "rev3.1 §GH2"
+
+      - name: segd_revision_major
+        offset: 10
+        length: 1
+        type: uint8
+        description: "SEG-D major revision number (binary; value = 3 for Rev3.1)"
+        spec_ref: "rev3.1 §GH2"
+
+      - name: segd_revision_minor
+        offset: 11
+        length: 1
+        type: uint8
+        description: "SEG-D minor revision number (binary; value = 1 for Rev3.1)"
+        spec_ref: "rev3.1 §GH2"
+
+      - name: general_trailer_blocks
+        offset: 12                   # 4 bytes in Rev3.1 (was 2 bytes in Rev2.1)
+        length: 4
+        type: uint32
+        description: "Number of 32-byte General Trailer blocks"
+        spec_ref: "rev3.1 §GH2"
+
+      - name: extended_record_length_us
+        offset: 16                   # 4 bytes in µs (was 3 bytes in ms in Rev2.1)
+        length: 4
+        type: uint32
+        description: "Record length in microseconds (use when GH1 record_length = FFF)"
+        spec_ref: "rev3.1 §GH2"
+
+      # bytes 21-22 (offsets 20-21): undefined
+
+      - name: extended_gh_blocks
+        offset: 22                   # NEW in Rev3.1
+        length: 2
+        type: uint16
+        description: "Extended general header blocks count (0 if unused)"
+        spec_ref: "rev3.1 §GH2"
+
+      - name: dominant_sampling_interval
+        offset: 24                   # NEW in Rev3.1 (units = 1/16 µs)
+        length: 3
+        type: uint24
+        description: "Dominant sampling interval (units = 1/16 µs; e.g., 2000 = 0.125 ms)"
+        spec_ref: "rev3.1 §GH2"
+
+      - name: external_header_blocks_count
+        offset: 27                   # 3 bytes in Rev3.1 (was 2 bytes at 7-8 in Rev2.1)
+        length: 3
+        type: uint24
+        description: "External header blocks count (use when GH1 external_header_blocks = FF)"
+        spec_ref: "rev3.1 §GH2"
+
+      # byte 31 (offset 30): undefined
+
+      - name: header_block_type
+        offset: 31
+        length: 1
+        type: uint8
+        description: "Header block type identifier (binary; value = 0x02 for GH2)"
+        spec_ref: "rev3.1 §GH2"
+
+  # ── General Header 3 — Timestamp (32 bytes) ─────────────────────────────────
+  # GPS-referenced record timestamps and record size metadata.
+  # header_block_type sentinel at offset 31 = 0x03.
+  general_header_3:
+    number: 3
+    size: 32
+    reserved:
+      - { offset: 30, length: 1, note: "spec: undefined" }
+    fields:
+
+      - name: time_zero
+        offset: 0
+        length: 8
+        type: uint64
+        description: "GPS time-zero reference (nanoseconds since GPS epoch, or relative depending on mode)"
+        spec_ref: "rev3.1 §GH3"
+
+      - name: record_size
+        offset: 8
+        length: 8
+        type: uint64
+        description: "Total record size in bytes"
+        spec_ref: "rev3.1 §GH3"
+
+      - name: data_size
+        offset: 16
+        length: 8
+        type: uint64
+        description: "Total data payload size in bytes (excludes headers and trailers)"
+        spec_ref: "rev3.1 §GH3"
+
+      - name: header_size
+        offset: 24
+        length: 4
+        type: uint32
+        description: "Total header size in bytes"
+        spec_ref: "rev3.1 §GH3"
+
+      - name: extended_recording_mode
+        offset: 28
+        length: 1
+        type: uint8
+        description: "Extended recording mode flag (0 = standard; 1 = extended/continuous)"
+        spec_ref: "rev3.1 §GH3"
+
+      - name: relative_time_mode
+        offset: 29
+        length: 1
+        type: uint8
+        description: "Relative time mode flag (0 = absolute GPS time; 1 = relative to record start)"
+        spec_ref: "rev3.1 §GH3"
+
+      # byte 31 (offset 30): undefined
+
+      - name: header_block_type
+        offset: 31
+        length: 1
+        type: uint8
+        description: "Header block type identifier (binary; value = 0x03 for GH3 Timestamp)"
+        spec_ref: "rev3.1 §GH3"
+
+  # ── General Header 4 — Vessel/Crew Identification (32 bytes) ────────────────
+  general_header_4:
+    number: 4
+    size: 32
+    fields:
+
+      - name: vessel_crew_abbreviation
+        offset: 0
+        length: 3
+        type: ascii
+        description: "Vessel or crew abbreviation (3-character ASCII, space-padded)"
+        spec_ref: "rev3.1 §GH4"
+
+      - name: vessel_crew_name
+        offset: 3
+        length: 28
+        type: ascii
+        description: "Vessel or crew full name (28-character ASCII, space-padded)"
+        spec_ref: "rev3.1 §GH4"
+
+      - name: header_block_type
+        offset: 31
+        length: 1
+        type: uint8
+        description: "Header block type identifier (binary; value = 0x10 for GH4 Vessel/Crew)"
+        spec_ref: "rev3.1 §GH4"
+
+  # ── General Header 5 — Survey Area Identification (32 bytes) ────────────────
+  general_header_5:
+    number: 5
+    size: 32
+    fields:
+
+      - name: survey_area_name
+        offset: 0
+        length: 31
+        type: ascii
+        description: "Survey area name (31-character ASCII, space-padded)"
+        spec_ref: "rev3.1 §GH5"
+
+      - name: header_block_type
+        offset: 31
+        length: 1
+        type: uint8
+        description: "Header block type identifier (binary; value = 0x11 for GH5 Survey Area)"
+        spec_ref: "rev3.1 §GH5"
+
+  # ── General Header 6 — Client Identification (32 bytes) ─────────────────────
+  general_header_6:
+    number: 6
+    size: 32
+    fields:
+
+      - name: client_name
+        offset: 0
+        length: 31
+        type: ascii
+        description: "Client name (31-character ASCII, space-padded)"
+        spec_ref: "rev3.1 §GH6"
+
+      - name: header_block_type
+        offset: 31
+        length: 1
+        type: uint8
+        description: "Header block type identifier (binary; value = 0x12 for GH6 Client)"
+        spec_ref: "rev3.1 §GH6"
+
+  # ── General Header 7 — Job Identification (32 bytes) ────────────────────────
+  general_header_7:
+    number: 7
+    size: 32
+    fields:
+
+      - name: job_id
+        offset: 0
+        length: 31
+        type: ascii
+        description: "Job identification string (31-character ASCII, space-padded)"
+        spec_ref: "rev3.1 §GH7"
+
+      - name: header_block_type
+        offset: 31
+        length: 1
+        type: uint8
+        description: "Header block type identifier (binary; value = 0x13 for GH7 Job ID)"
+        spec_ref: "rev3.1 §GH7"
+
+  # ── General Header 8 — Line Identification (32 bytes) ───────────────────────
+  # SmartSolo fw3.1_v1 repurposes this block for Source Description (replace:true).
+  general_header_8:
+    number: 8
+    size: 32
+    fields:
+
+      - name: line_id
+        offset: 0
+        length: 31
+        type: ascii
+        description: "Line identification string (31-character ASCII, space-padded)"
+        spec_ref: "rev3.1 §GH8"
+
+      - name: header_block_type
+        offset: 31
+        length: 1
+        type: uint8
+        description: "Header block type identifier (binary; value = 0x14 for GH8 Line ID)"
+        spec_ref: "rev3.1 §GH8"
+
+  # ── Channel Set Descriptor (96 bytes = 3 × 32-byte sub-blocks) ──────────────
+  # Full layout transcribed from Rev3.1 spec §8.16 pages 115-119.
+  # Sub-block 1 (offsets 0-31): identification, timing, gain, navigation.
+  # Sub-block 2 (offsets 32-63): filter parameters.
+  # Sub-block 3 (offsets 64-95): filter delay + description text.
+  # Each sub-block ends with a header_block_type sentinel byte
+  # (0x30, 0x31, 0x32 respectively).
+  channel_set_descriptor:
+    size: 96
+    reserved:
+      - { offset: 62, length: 1, note: "spec: 'These bits are undefined by the format and may have any value' (future-reserved)" }
+    fields:
+
+      # ── Sub-block 1 (offsets 0-31): identification, timing, gain ──
+      - name: scan_type_number
+        offset: 0                  # spec byte 1
+        length: 1
+        type: bcd_digits
+        description: "Scan type number (1-99; repeated in all descriptors for the same scan type)"
+        spec_ref: "rev3.1 §8.16 p.115"
+
+      - name: channel_set_number
+        offset: 1                  # spec bytes 2-3
+        length: 2
+        type: uint16
+        description: "Channel set number (2-byte unsigned binary; 1-65535)"
+        spec_ref: "rev3.1 §8.16 p.115"
+
+      - name: channel_type
+        offset: 3                  # spec byte 4; full byte binary (was nibble in Rev2.1)
+        length: 1
+        type: uint8
+        values:
+          0x00: unused
+          0x10: seis
+          0x11: electromagnetic
+          0x20: time_break
+          0x21: clock_timebreak
+          0x22: field_timebreak
+          0x30: uphole
+          0x40: water_break
+          0x50: time_counter
+          0x60: external_data
+          0x61: acoustic_range_measurement
+          0x62: acoustic_reference_measured
+          0x63: acoustic_reference_nominal
+          0x70: other
+          0x80: signature_unfiltered
+          0x90: signature_filtered
+          0x91: source_signature_unfiltered
+          0x92: source_signature_filtered
+          0x93: source_signature_estimated
+          0x94: source_signature_measured
+          0x95: source_base_plate
+          0x96: source_reference_sweep
+          0x97: source_other
+          0x98: source_reference_pilot
+          0x99: source_mass
+          0x9A: source_excitation
+          0x9B: source_valve
+          0x9C: source_overload
+          0xA0: aux_data_trailer_deprecated
+          0xB0: true_reference_sweep
+          0xB1: radio_reference_sweep
+          0xB2: radio_similarity_signal
+          0xB3: wireline_reference_sweep
+          0xC0: depth
+          0xC1: wind
+          0xC2: current
+          0xC3: voltage
+          0xC4: velocity
+          0xC5: acceleration
+          0xC6: pressure
+          0xC7: tension
+          0xC8: tilt_measurement
+          0xC9: angle_measurement
+          0xF0: calibration_trace
+        description: "Channel type identification (per-channel-set)"
+        spec_ref: "rev3.1 §8.16 p.116"
+
+      - name: channel_set_start_time
+        offset: 4                  # spec bytes 5-8; two's-complement signed binary
+        length: 4
+        type: int32
+        description: "Channel set start time from time zero (4-byte signed binary; 1 µs units; -2,147,483,648 to +2,147,483,647)"
+        spec_ref: "rev3.1 §8.16 p.116"
+
+      - name: channel_set_end_time
+        offset: 8                  # spec bytes 9-12; two's-complement signed binary
+        length: 4
+        type: int32
+        description: "Channel set end time from time zero (4-byte signed binary; 1 µs units)"
+        spec_ref: "rev3.1 §8.16 p.117"
+
+      - name: num_samples
+        offset: 12                 # spec bytes 13-16
+        length: 4
+        type: uint32
+        description: "Number of samples per trace in this channel set (4-byte unsigned binary; TE = TF + NS×SR)"
+        spec_ref: "rev3.1 §8.16 p.117"
+
+      - name: mp_factor
+        offset: 16                 # spec bytes 17-20
+        length: 4
+        type: ieee_float
+        description: "Sample descale multiplication factor (32-bit IEEE float; result in millivolts)"
+        spec_ref: "rev3.1 §8.16 p.117"
+
+      - name: channel_count
+        offset: 20                 # spec bytes 21-23
+        length: 3
+        type: uint24
+        description: "Number of channels in this channel set (24-bit unsigned binary; 0-16,777,215)"
+        spec_ref: "rev3.1 §8.16 p.117"
+
+      - name: sampling_interval_us
+        offset: 23                 # spec bytes 24-26
+        length: 3
+        type: uint24
+        description: "Sampling interval in microseconds (24-bit unsigned binary; 0-16,777,215)"
+        spec_ref: "rev3.1 §8.16 p.117"
+
+      - name: array_forming
+        offset: 26                 # spec byte 27 (moved from offset 31 in Rev2.1)
+        length: 1
+        type: uint8
+        description: "Array forming (0x01=none; 0x0N=N groups summed; 0x1N=N groups weighted overlapping)"
+        spec_ref: "rev3.1 §8.16 p.117"
+
+      - name: trace_header_extensions_count
+        offset: 27                 # spec byte 28; FULL byte in Rev3.1 (was nibble in Rev2.1)
+        length: 1
+        type: uint8
+        description: "Number of 32-byte trace header extension blocks per trace (1-255; 0 not allowed; must match demux_trace_header.trace_header_extensions)"
+        spec_ref: "rev3.1 §8.16 p.118"
+
+      - name: extended_header_flag
+        offset: 28                 # spec byte 29, HIGH nibble
+        nibble: high
+        type: bcd_nibble
+        description: "Extended header flag (4 bits; 1 = extended header contains additional channel-set info)"
+        spec_ref: "rev3.1 §8.16 p.118"
+
+      - name: gain_control_method
+        offset: 28                 # spec byte 29, LOW nibble
+        nibble: low
+        type: bcd_nibble
+        values:
+          0x1: individual_agc
+          0x2: ganged_agc
+          0x3: fixed_gain
+          0x4: programmed_gain
+          0x8: binary_gain
+          0x9: ifp_gain
+        description: "Channel gain control method"
+        spec_ref: "rev3.1 §8.16 p.118"
+
+      - name: vertical_stack
+        offset: 29                 # spec byte 30
+        length: 1
+        type: uint8
+        description: "Vertical stack order (0 = real zero; 1 = no stack; N = effective stack order)"
+        spec_ref: "rev3.1 §8.16 p.118"
+
+      - name: cable_number
+        offset: 30                 # spec byte 31
+        length: 1
+        type: uint8
+        description: "Streamer cable number (1 = starboard-most; N = port-most; 0 = not recorded / land acquisition)"
+        spec_ref: "rev3.1 §8.16 p.118"
+
+      - name: header_block_type_1
+        offset: 31                 # spec byte 32
+        length: 1
+        type: uint8
+        description: "Header block type sentinel (binary; value = 0x30 for Channel Set Descriptor block 1)"
+        spec_ref: "rev3.1 §8.16 p.118"
+
+      # ── Sub-block 2 (offsets 32-63): filter parameters ──
+      - name: alias_filter_freq_hz
+        offset: 32                 # spec bytes 33-36
+        length: 4
+        type: ieee_float
+        description: "Alias filter frequency in Hz (32-bit IEEE float)"
+        spec_ref: "rev3.1 §8.16 p.118"
+
+      - name: low_cut_freq_hz
+        offset: 36                 # spec bytes 37-40
+        length: 4
+        type: ieee_float
+        description: "Low-cut filter frequency in Hz (32-bit IEEE float)"
+        spec_ref: "rev3.1 §8.16 p.118"
+
+      - name: alias_filter_slope_db_oct
+        offset: 40                 # spec bytes 41-44
+        length: 4
+        type: ieee_float
+        description: "Alias filter slope in dB/octave (32-bit IEEE float; 0 = filter out)"
+        spec_ref: "rev3.1 §8.16 p.118"
+
+      - name: low_cut_slope_db_oct
+        offset: 44                 # spec bytes 45-48
+        length: 4
+        type: ieee_float
+        description: "Low-cut filter slope in dB/octave (32-bit IEEE float; 0 = filter out)"
+        spec_ref: "rev3.1 §8.16 p.118"
+
+      - name: notch_1_freq_hz
+        offset: 48                 # spec bytes 49-52
+        length: 4
+        type: ieee_float
+        description: "First notch filter frequency in Hz (32-bit IEEE float; 0.0 = filter out)"
+        spec_ref: "rev3.1 §8.16 p.118"
+
+      - name: notch_2_freq_hz
+        offset: 52                 # spec bytes 53-56
+        length: 4
+        type: ieee_float
+        description: "Second notch filter frequency in Hz (32-bit IEEE float; 0.0 = filter out)"
+        spec_ref: "rev3.1 §8.16 p.118"
+
+      - name: notch_3_freq_hz
+        offset: 56                 # spec bytes 57-60
+        length: 4
+        type: ieee_float
+        description: "Third notch filter frequency in Hz (32-bit IEEE float; 0.0 = filter out)"
+        spec_ref: "rev3.1 §8.16 p.118"
+
+      - name: filter_phase
+        offset: 60                 # spec byte 61
+        length: 1
+        type: uint8
+        values:
+          0x00: unknown
+          0x01: minimum
+          0x02: linear
+          0x03: zero
+          0x04: mixed
+          0x05: maximum
+        description: "Filter phase"
+        spec_ref: "rev3.1 §8.16 p.119"
+
+      - name: physical_unit
+        offset: 61                 # spec byte 62
+        length: 1
+        type: uint8
+        values:
+          0x00: unknown
+          0x01: millibar
+          0x02: bar
+          0x03: mm_per_s
+          0x04: m_per_s
+          0x05: mm_per_s2
+          0x06: m_per_s2
+          0x07: newton
+          0x08: kelvin
+          0x09: hertz
+          0x0A: second
+          0x0B: tesla
+          0x0C: volt_per_meter
+          0x0D: volt_meter
+          0x0E: ampere_per_meter
+          0x0F: volt
+          0x10: ampere
+          0x11: radians
+          0x12: pascal
+          0x13: micropascal
+          0x14: millimeter
+          0x15: meter
+        description: "Physical unit measured by this sensor"
+        spec_ref: "rev3.1 §8.16 p.119"
+
+      # byte 63 (offset 62): undefined, reserved for future use
+
+      - name: header_block_type_2
+        offset: 63                 # spec byte 64
+        length: 1
+        type: uint8
+        description: "Header block type sentinel (binary; value = 0x31 for Channel Set Descriptor block 2)"
+        spec_ref: "rev3.1 §8.16 p.119"
+
+      # ── Sub-block 3 (offsets 64-95): filter delay + channel set description ──
+      - name: filter_delay_us
+        offset: 64                 # spec bytes 65-68
+        length: 4
+        type: uint32
+        description: "Signal delay introduced by the filter, in microseconds"
+        spec_ref: "rev3.1 §8.16 p.119"
+
+      - name: channel_set_description
+        offset: 68                 # spec bytes 69-95
+        length: 27
+        type: ascii
+        description: "Channel set free-text description (27 ASCII chars; space-padded; zero 0x00 not allowed)"
+        spec_ref: "rev3.1 §8.16 p.119"
+
+      - name: header_block_type_3
+        offset: 95                 # spec byte 96
+        length: 1
+        type: uint8
+        description: "Header block type sentinel (binary; value = 0x32 for Channel Set Descriptor block 3)"
+        spec_ref: "rev3.1 §8.16 p.119"
+
+  # ── Demultiplexed Trace Header (32 bytes) ───────────────────────────────────
+  # CHAN_SET has moved to the channel set descriptor in Rev3.1; the byte at
+  # offset 3 is still present but no longer the primary CHAN_SET mapping.
+  # All other field positions match Rev2.1.
+  demux_trace_header:
+    size: 32
+    reserved:
+      - { offset: 20, length: 12, note: "spec: undefined" }
+    fields:
+
+      - name: file_number
+        offset: 0
+        length: 2
+        type: bcd_digits
+        description: "File number (FFFF = use extended_file_number at offsets 17-19)"
+        spec_ref: "rev3.1 §demux trace"
+
+      - name: scan_type_number
+        offset: 2
+        length: 1
+        type: bcd_digits
+        description: "Scan type number for this trace"
+        spec_ref: "rev3.1 §demux trace"
+
+      - name: channel_set_number
+        offset: 3
+        length: 1
+        type: bcd_digits
+        description: "Channel set number (FF = use extended_channel_set_number; CHAN_SET now comes from channel set descriptor)"
+        spec_ref: "rev3.1 §demux trace"
+
+      - name: trace_number
+        offset: 4
+        length: 2
+        type: bcd_digits
+        description: "Trace number within channel set (4 BCD digits)"
+        spec_ref: "rev3.1 §demux trace"
+
+      - name: first_timing_word
+        offset: 6
+        length: 3
+        type: uint24
+        description: "First timing word T15-T-8 (3-byte binary; timing of first sample)"
+        spec_ref: "rev3.1 §demux trace"
+
+      - name: trace_header_extensions
+        offset: 9
+        length: 1
+        type: uint8
+        description: "Number of 32-byte trace header extension blocks following this trace (0-15)"
+        spec_ref: "rev3.1 §demux trace"
+
+      - name: sample_skew
+        offset: 10
+        length: 1
+        type: uint8
+        description: "Sample skew SSK (binary fraction of base scan interval)"
+        spec_ref: "rev3.1 §demux trace"
+
+      - name: trace_edit
+        offset: 11
+        length: 1
+        type: uint8
+        values:
+          0: none
+          1: roll_on_off_zeroed
+          2: intentionally_zeroed
+          3: system_modified
+        description: "Trace edit flag"
+        spec_ref: "rev3.1 §demux trace"
+
+      - name: time_break_window
+        offset: 12
+        length: 3
+        type: uint24
+        description: "Time break window TW15-TW-8 (2-byte integer + 1-byte fraction)"
+        spec_ref: "rev3.1 §demux trace"
+
+      - name: extended_channel_set_number
+        offset: 15
+        length: 2
+        type: uint16
+        description: "Extended channel set number (use when channel_set_number = FF)"
+        spec_ref: "rev3.1 §demux trace"
+
+      - name: extended_file_number
+        offset: 17
+        length: 3
+        type: uint24
+        description: "Extended file number (use when file_number = FFFF)"
+        spec_ref: "rev3.1 §demux trace"
+
+      # bytes 21-32 (offsets 20-31): undefined
+
+computed:
+  - name: total_active_channels
+    description: "Sum of channel_count across all active channel sets in the record"

@@ -1,0 +1,6 @@
+# Sercel — SEG-D Rev2.1 baseline variant map (no deltas vs. standard.map.yaml).
+# Paired with rev2.1/sercel/version001.yaml. Empty by design — all bindings
+# live in standard.map.yaml. Future variants can override individual entries
+# here without rewriting the standard layer.
+
+mappings: {}

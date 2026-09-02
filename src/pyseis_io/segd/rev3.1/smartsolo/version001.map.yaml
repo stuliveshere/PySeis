@@ -1,0 +1,24 @@
+# SmartSolo firmware Rev3.1 spec v1 — ProMAX/SeisSpace map delta
+# Paired with rev3.1/smartsolo/version001.yaml (structural delta).
+# Merges after rev3.1/smartsolo/standard.map.yaml.
+#
+# Variant-specific bindings for Rev3.1 v1:
+#   - Source line/point live in GH8 (SmartSolo repurposes the standard
+#     Line-ID block via replace:true). Rev1.0 and Rev2.1 kept these in GH3.
+#   - Receiver line/point live in receiver_geometry at offsets 10/15 with
+#     INT + FRAC split (no short-form offsets 0-5 in Rev3.1).
+
+mappings:
+  sg:
+    S_LINE:    general_header_8.source_line_int
+    SOU_SLOC:  general_header_8.source_point_int
+    CDP_SLOC:  general_header_8.source_point_index
+    R_LINE:    receiver_geometry.rcvr_line_int
+    SRF_SLOC:  receiver_geometry.rcvr_point_int
+  rg:
+    # In RG, source-line fields carry receiver line/point and vice versa.
+    R_LINE:    general_header_8.source_line_int
+    SRF_SLOC:  general_header_8.source_point_int
+    S_LINE:    receiver_geometry.rcvr_line_int
+    SOU_SLOC:  receiver_geometry.rcvr_point_int
+  # cg: no binding — line/point suppressed in continuous gather

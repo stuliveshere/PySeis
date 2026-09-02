@@ -1,0 +1,18 @@
+# SmartSolo firmware Rev1.0 spec v1 — ProMAX/SeisSpace map delta
+# Paired with rev1.0/smartsolo/version001.yaml (structural delta).
+# Merges after rev1.0/smartsolo/standard.map.yaml.
+#
+# Variant-specific bindings: Rev1.0 v1 stores receiver line/point as plain
+# INT24 at receiver_geometry offsets 0/3 (no fractional parts, no extended
+# fields). The line/point bindings live here rather than in standard.map
+# because the Rev2.1-style receiver_geometry layout differs across variants.
+
+mappings:
+  sg:
+    R_LINE:    receiver_geometry.rcvr_line_int
+    SRF_SLOC:  receiver_geometry.rcvr_point_int
+  rg:
+    # RG: receiver line/point fields actually carry source line/point.
+    S_LINE:    receiver_geometry.rcvr_line_int
+    SOU_SLOC:  receiver_geometry.rcvr_point_int
+  # cg: no binding — line/point suppressed in continuous gather

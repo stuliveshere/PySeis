@@ -35,5 +35,5 @@ pyseis-view = "pyseis_io.visualization.viewer:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-pyseis_io = ["templates/schemas/*.yaml"]
+pyseis_io = ["templates/schemas/*.yaml", "segd/*.yaml", "segd/*/*.yaml", "segy/*.yaml", "segy/*/*.yaml"]
 

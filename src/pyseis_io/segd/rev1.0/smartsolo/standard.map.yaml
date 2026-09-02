@@ -1,0 +1,100 @@
+# SmartSolo (DTCC) — SEG-D Rev1.0 manufacturer-common ProMAX/SeisSpace map
+# Paired with rev1.0/smartsolo/standard.yaml (manufacturer structural).
+#
+# Load order (structural):  rev1.0/base.yaml  →  rev1.0/smartsolo/standard.yaml
+#                                             →  rev1.0/smartsolo/versionNNN.yaml
+# Load order (mapping):     rev1.0/smartsolo/standard.map.yaml
+#                                             →  rev1.0/smartsolo/versionNNN.map.yaml
+#
+# SmartSolo RG/CG gather modes swap source/receiver semantics:
+#   SG: source fields → SOU_*, receiver fields → REC_*
+#   RG: source fields → REC_* (they carry receiver coords in RG)
+#       receiver fields → SOU_* (they carry source coords in RG)
+#   CG: source/receiver position bindings suppressed (neither applies)
+
+# ── Structural concept resolvers (gather-type keyed) ──────────────────────────
+resolvers:
+  sg:
+    ffid:                    external_header.external_ffid
+    sample_interval_micros:  file_extended_header.sample_rate_us
+    samples_per_trace:       file_extended_header.samples_per_trace
+  rg:
+    ffid:                    external_header.external_ffid
+    sample_interval_micros:  file_extended_header.sample_rate_us
+    samples_per_trace:       file_extended_header.samples_per_trace
+  cg:
+    ffid:                    external_header.external_ffid
+    sample_interval_micros:  file_extended_header.sample_rate_us
+    samples_per_trace:       file_extended_header.samples_per_trace
+
+# ── ProMAX / SeisSpace import mappings (gather-type keyed) ───────────────────
+mappings:
+  sg:
+    # Identity & timing (common to all gather modes)
+    FFID:       external_header.external_ffid
+    YER_SHOT:   general_header_1.year
+    DAY_SHOT:   general_header_1.julian_day
+    TIM_SHOT:   general_header_1.time_hhmmss
+    SCANTYPE:   channel_set_descriptor.scan_type_number
+    CHAN_SET:   channel_set_descriptor.channel_set_number
+    TRC_TYPE:   channel_set_descriptor.channel_type
+    SEGDGAIN:   channel_set_descriptor.mp_factor
+    CABLE_NO:   channel_set_descriptor.cable_number
+    TLIVE_S:    channel_set_descriptor.channel_set_start_time
+    TFULL_S:    channel_set_descriptor.channel_set_end_time
+    CHAN:       node_identification.channel_number
+    USER01:     tb_gps.tb_gps_time_us
+    USER02:     node_identification.unit_serial_number
+    # Source (from GH3 + external_header)
+    S_LINE:     general_header_3.source_line_int
+    SOU_SLOC:   general_header_3.source_point_int
+    CDP_SLOC:   general_header_3.source_point_index
+    SOU_XD:     { field: external_header.source_easting_cm,   scale: 0.01 }   # cm → m
+    SOU_YD:     { field: external_header.source_northing_cm,  scale: 0.01 }
+    SOU_ELEV:   { field: external_header.source_elevation_cm, scale: 0.01 }
+    # Receiver (from trace-ext receiver_coords)
+    REC_XD:     { field: receiver_coords.rcvr_easting_cm,   scale: 0.01 }
+    REC_YD:     { field: receiver_coords.rcvr_northing_cm,  scale: 0.01 }
+    REC_ELEV:   { field: receiver_coords.rcvr_elevation_cm, scale: 0.01 }
+
+  rg:
+    # In RG the source bytes carry receiver coords and vice versa.
+    FFID:       external_header.external_ffid
+    YER_SHOT:   general_header_1.year
+    DAY_SHOT:   general_header_1.julian_day
+    TIM_SHOT:   general_header_1.time_hhmmss
+    SCANTYPE:   channel_set_descriptor.scan_type_number
+    CHAN_SET:   channel_set_descriptor.channel_set_number
+    TRC_TYPE:   channel_set_descriptor.channel_type
+    SEGDGAIN:   channel_set_descriptor.mp_factor
+    CABLE_NO:   channel_set_descriptor.cable_number
+    TLIVE_S:    channel_set_descriptor.channel_set_start_time
+    TFULL_S:    channel_set_descriptor.channel_set_end_time
+    CHAN:       node_identification.channel_number
+    USER01:     tb_gps.tb_gps_time_us
+    USER02:     node_identification.unit_serial_number
+    # Source bytes now carry receiver
+    REC_XD:     { field: external_header.source_easting_cm,   scale: 0.01 }
+    REC_YD:     { field: external_header.source_northing_cm,  scale: 0.01 }
+    REC_ELEV:   { field: external_header.source_elevation_cm, scale: 0.01 }
+    # Receiver bytes now carry source
+    SOU_XD:     { field: receiver_coords.rcvr_easting_cm,   scale: 0.01 }
+    SOU_YD:     { field: receiver_coords.rcvr_northing_cm,  scale: 0.01 }
+    SOU_ELEV:   { field: receiver_coords.rcvr_elevation_cm, scale: 0.01 }
+
+  cg:
+    # Continuous gather — source/receiver position fields suppressed.
+    FFID:       external_header.external_ffid
+    YER_SHOT:   general_header_1.year
+    DAY_SHOT:   general_header_1.julian_day
+    TIM_SHOT:   general_header_1.time_hhmmss
+    SCANTYPE:   channel_set_descriptor.scan_type_number
+    CHAN_SET:   channel_set_descriptor.channel_set_number
+    TRC_TYPE:   channel_set_descriptor.channel_type
+    SEGDGAIN:   channel_set_descriptor.mp_factor
+    CABLE_NO:   channel_set_descriptor.cable_number
+    TLIVE_S:    channel_set_descriptor.channel_set_start_time
+    TFULL_S:    channel_set_descriptor.channel_set_end_time
+    CHAN:       node_identification.channel_number
+    USER01:     tb_gps.tb_gps_time_us
+    USER02:     node_identification.unit_serial_number

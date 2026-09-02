@@ -1,0 +1,54 @@
+# Input/Output, Inc. — SEG-D Rev0 SYSTEM II mapping deltas.
+#
+# Adds the geometry bindings made possible by the `file_extended_header`
+# block declared in version001.yaml. Everything the manufacturer-common
+# layer already binds (identity, channel-set sizing/timing, shot time, gain)
+# is inherited unchanged from standard.map.yaml.
+#
+# ── What is NOT bound here, and why ────────────────────────────────────────
+# The per-trace receiver station is deliberately absent. ProMAX derives it as
+#
+#     SRF_SLOC = <trace channel number> + file_extended_header.rcvr_station_base
+#
+# which combines a per-trace field with a per-record field. The mapping layer
+# supports only a constant scale/offset transform against a single field
+# (MappingTarget), so this is not expressible in YAML. Rather than hard-code
+# a per-survey constant into a manufacturer schema, both inputs are exposed
+# as headers — CHAN (bound in standard.map.yaml) and RCV_BASE below — and the
+# arithmetic is left to a downstream step such as Trace Header Math.
+#
+# Verified against the reference file: with rcvr_station_base = 1233, the
+# expression above reproduces ProMAX's SRF_SLOC for all 245 live traces.
+# Note ProMAX assigns nothing (leaves headers zero) for the signature,
+# time-break and aux channels, which fall outside the receiver line's window.
+#
+# ── Scratch headers ────────────────────────────────────────────────────────
+# RCV_BASE and RCV_LAST are not ProMAX catalog names; HdrEntryRegistry
+# auto-creates them as single-word float user headers on first use.
+#
+# ── Gather modes ───────────────────────────────────────────────────────────
+# SG is the only mode exercised by this corpus (these are shot records, and
+# rev0.0/io/standard.yaml declares no `gather_type:` so the reader defaults to
+# SG). The rg block still applies the conventional source/receiver swap for
+# consistency with the other manufacturer schemas; it is untested on real
+# data. cg omits geometry entirely — neither concept applies there.
+
+mappings:
+  sg:
+    SOU_SLOC:  file_extended_header.source_station
+    S_LINE:    file_extended_header.source_line
+    R_LINE:    file_extended_header.rcvr_line
+    RCV_BASE:  file_extended_header.rcvr_station_base
+    RCV_LAST:  file_extended_header.rcvr_station_last
+
+  rg:
+    # Source/receiver roles swap in a receiver gather: the recorded source
+    # station becomes the per-trace "receiver" slot and vice versa.
+    SRF_SLOC:  file_extended_header.source_station
+    R_LINE:    file_extended_header.source_line
+    S_LINE:    file_extended_header.rcvr_line
+    RCV_BASE:  file_extended_header.rcvr_station_base
+    RCV_LAST:  file_extended_header.rcvr_station_last
+
+  cg:
+    # No source/receiver geometry bindings — see README "Mapping rules".

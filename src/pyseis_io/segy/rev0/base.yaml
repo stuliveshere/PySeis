@@ -1,0 +1,272 @@
+# SEG-Y Revision 0 (1975 Standard) Block Specification
+# Reference: SEG Technical Standards Committee, "Digital Seismic Tape Format Standards - SEG-Y" (1975)
+#            docs/standards/seg_y_rev0.pdf
+
+blocks:
+
+  # ── Textual Header (3200 bytes EBCDIC) ───────────────────────────────────────
+  textual_header:
+    number: 1
+    size: 3200
+    fields:
+      - name: text
+        offset: 0
+        length: 3200
+        type: ascii
+        description: "3200-byte EBCDIC textual file header (40 lines of 80 characters)"
+        spec_ref: "seg_y_rev0 §3.1 p.3"
+
+  # ── Binary Header (400 bytes) ────────────────────────────────────────────────
+  binary_header:
+    number: 2
+    size: 400
+    fields:
+      - name: jobid
+        offset: 0
+        length: 4
+        type: int32
+        description: "Job identification number"
+        spec_ref: "seg_y_rev0 §3.2 p.5"
+
+      - name: lino
+        offset: 4
+        length: 4
+        type: int32
+        description: "Line number"
+        spec_ref: "seg_y_rev0 §3.2 p.5"
+
+      - name: reno
+        offset: 8
+        length: 4
+        type: int32
+        description: "Reel number"
+        spec_ref: "seg_y_rev0 §3.2 p.5"
+
+      - name: ntrpr
+        offset: 12
+        length: 2
+        type: int16
+        description: "Number of data traces per record"
+        spec_ref: "seg_y_rev0 §3.2 p.5"
+
+      - name: nart
+        offset: 14
+        length: 2
+        type: int16
+        description: "Number of auxiliary traces per record"
+        spec_ref: "seg_y_rev0 §3.2 p.5"
+
+      - name: hdt
+        offset: 16
+        length: 2
+        type: uint16
+        description: "Sample interval in microseconds (µs)"
+        spec_ref: "seg_y_rev0 §3.2 p.5"
+
+      - name: dto
+        offset: 18
+        length: 2
+        type: uint16
+        description: "Sample interval of original field recording (µs)"
+        spec_ref: "seg_y_rev0 §3.2 p.5"
+
+      - name: hns
+        offset: 20
+        length: 2
+        type: uint16
+        description: "Number of samples per data trace"
+        spec_ref: "seg_y_rev0 §3.2 p.5"
+
+      - name: nso
+        offset: 22
+        length: 2
+        type: uint16
+        description: "Number of samples per trace of original field recording"
+        spec_ref: "seg_y_rev0 §3.2 p.5"
+
+      - name: format
+        offset: 24
+        length: 2
+        type: int16
+        description: "Data sample format code: 1=IBM 32-bit float, 2=32-bit int, 3=16-bit int, 5=IEEE float"
+        spec_ref: "seg_y_rev0 §3.2 p.5"
+
+      - name: fold
+        offset: 26
+        length: 2
+        type: int16
+        description: "CDP fold"
+        spec_ref: "seg_y_rev0 §3.2 p.6"
+
+      - name: tsort
+        offset: 28
+        length: 2
+        type: int16
+        description: "Trace sorting code: 1=As recorded, 2=CDP, 3=Single fold, 4=Horizontal stack"
+        spec_ref: "seg_y_rev0 §3.2 p.6"
+
+      - name: vscode
+        offset: 30
+        length: 2
+        type: int16
+        description: "Vertical sum code"
+        spec_ref: "seg_y_rev0 §3.2 p.6"
+
+      - name: mfeet
+        offset: 54
+        length: 2
+        type: int16
+        description: "Measurement system: 1=Meters, 2=Feet"
+        spec_ref: "seg_y_rev0 §3.2 p.7"
+
+  # ── Trace Header (240 bytes) ─────────────────────────────────────────────────
+  trace_header:
+    number: 3
+    size: 240
+    fields:
+      - name: tracl
+        offset: 0
+        length: 4
+        type: int32
+        description: "Trace sequence number within line"
+        spec_ref: "seg_y_rev0 §3.3 p.8"
+
+      - name: tracr
+        offset: 4
+        length: 4
+        type: int32
+        description: "Trace sequence number within reel"
+        spec_ref: "seg_y_rev0 §3.3 p.8"
+
+      - name: fldr
+        offset: 8
+        length: 4
+        type: int32
+        description: "Original field record number (FFID)"
+        spec_ref: "seg_y_rev0 §3.3 p.8"
+
+      - name: tracf
+        offset: 12
+        length: 4
+        type: int32
+        description: "Trace number within original field record (CHAN)"
+        spec_ref: "seg_y_rev0 §3.3 p.8"
+
+      - name: ep
+        offset: 16
+        length: 4
+        type: int32
+        description: "Energy source point number"
+        spec_ref: "seg_y_rev0 §3.3 p.8"
+
+      - name: cdp
+        offset: 20
+        length: 4
+        type: int32
+        description: "Ensemble / CDP number"
+        spec_ref: "seg_y_rev0 §3.3 p.8"
+
+      - name: cdpt
+        offset: 24
+        length: 4
+        type: int32
+        description: "Trace number within CDP ensemble"
+        spec_ref: "seg_y_rev0 §3.3 p.8"
+
+      - name: trid
+        offset: 28
+        length: 2
+        type: int16
+        description: "Trace identification code: 1=Seismic, 2=Dead, 3=Dummy, 4=Time break, etc."
+        spec_ref: "seg_y_rev0 §3.3 p.8"
+
+      - name: offset
+        offset: 36
+        length: 4
+        type: int32
+        description: "Distance from source point to receiver group"
+        spec_ref: "seg_y_rev0 §3.3 p.9"
+
+      - name: gelev
+        offset: 40
+        length: 4
+        type: int32
+        description: "Receiver group elevation"
+        spec_ref: "seg_y_rev0 §3.3 p.9"
+
+      - name: selev
+        offset: 44
+        length: 4
+        type: int32
+        description: "Source elevation"
+        spec_ref: "seg_y_rev0 §3.3 p.9"
+
+      - name: sdepth
+        offset: 48
+        length: 4
+        type: int32
+        description: "Source depth below surface"
+        spec_ref: "seg_y_rev0 §3.3 p.9"
+
+      - name: scalel
+        offset: 68
+        length: 2
+        type: int16
+        description: "Scalar to be applied to all elevations and depths"
+        spec_ref: "seg_y_rev0 §3.3 p.10"
+
+      - name: scalco
+        offset: 72
+        length: 2
+        type: int16
+        description: "Scalar to be applied to all coordinates"
+        spec_ref: "seg_y_rev0 §3.3 p.10"
+
+      - name: sx
+        offset: 76
+        length: 4
+        type: int32
+        description: "Source coordinate X"
+        spec_ref: "seg_y_rev0 §3.3 p.10"
+
+      - name: sy
+        offset: 80
+        length: 4
+        type: int32
+        description: "Source coordinate Y"
+        spec_ref: "seg_y_rev0 §3.3 p.10"
+
+      - name: gx
+        offset: 84
+        length: 4
+        type: int32
+        description: "Group (receiver) coordinate X"
+        spec_ref: "seg_y_rev0 §3.3 p.10"
+
+      - name: gy
+        offset: 88
+        length: 4
+        type: int32
+        description: "Group (receiver) coordinate Y"
+        spec_ref: "seg_y_rev0 §3.3 p.10"
+
+      - name: counit
+        offset: 92
+        length: 2
+        type: int16
+        description: "Coordinate units: 1=Length (m/ft), 2=Seconds of arc, 3=Degrees, minutes, seconds"
+        spec_ref: "seg_y_rev0 §3.3 p.10"
+
+      - name: ns
+        offset: 114
+        length: 2
+        type: uint16
+        description: "Number of samples in this trace"
+        spec_ref: "seg_y_rev0 §3.3 p.11"
+
+      - name: dt
+        offset: 116
+        length: 2
+        type: uint16
+        description: "Sample interval for this trace (µs)"
+        spec_ref: "seg_y_rev0 §3.3 p.11"

@@ -1,0 +1,47 @@
+# Input/Output, Inc. (now ION Geophysical) — SEG-D Rev0 manufacturer-common (schema v2)
+#
+# **No manufacturer-specific spec PDF is available.** This file deliberately
+# carries no `blocks:` or `trace_extensions:` overrides — the schema simply
+# inherits the SEG-D Rev 0 base layout from rev0.0/base.yaml. If a vendor
+# spec turns up later (or empirical analysis of the corpus reveals
+# manufacturer-specific extended-header content), block overrides can be
+# added here without touching the base layer.
+#
+# What we know about this manufacturer:
+#   - Manufacturer code 0x18 (decimal 24) per SEG-D Rev 1 Appendix A.
+#   - Local corpus is mid-1990s vintage (SDU09430TA filename pattern), file
+#     header dump shows 5-channel-set scan types: signature/unfiltered +
+#     time-break + 3× seis at 2 ms × 9.216 s.
+#   - Format code 8015 (20-bit binary demultiplexed) is the only sample
+#     encoding seen in the local corpus. Per SEG-D Rev 0 spec the
+#     manufacturer could legitimately have written 8014/8024/8025/8036/8038
+#     — list expands here as new corpus material arrives.
+#   - No GH2/GH3 (Rev 0 doesn't define them).
+#   - Extended/external headers are present and their byte content is
+#     manufacturer-defined. The extended-header layout is instrument-
+#     specific (established for SYSTEM II only), so it is declared in the
+#     variant layer — see version001.yaml — rather than here. The
+#     `external_header_blocks` GH1 field on the corpus files is 0, so the
+#     external header carries nothing for the local data.
+#
+# Structural load order:  rev0.0/base.yaml  →  this file  →  versionNNN.yaml
+# Mapping load order:     standard.map.yaml  →  versionNNN.map.yaml
+
+manufacturer: Input/Output Inc.
+manufacturer_alias: ION
+code: 0x18
+format_codes:
+  - 8015      # 20-bit binary demultiplexed (only code seen in local corpus)
+
+# Gather-type indicator: Rev 0 has no native field for it, and we don't
+# know what (if anything) I/O wrote into the extended header. Schema omits
+# `gather_type:`; SegdReader defaults to SG. Users override via
+# SegdInputProc.OVERRIDE_PRIMARY_SORT.
+
+# No `blocks:` section — inherits everything from rev0.0/base.yaml.
+# Add overrides here if a manufacturer spec becomes available, e.g.:
+#   blocks:
+#     extended_header:
+#       size: 128
+#       fields:
+#         - { name: source_x, offset: 0, length: 4, type: float32, … }

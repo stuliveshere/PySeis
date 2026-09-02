@@ -1,0 +1,20 @@
+# Sercel — SEG-D Rev2.1 baseline variant (covers 428XL v3+ and Unite v3.0)
+# Reference: javadocs/segd/428_standards.pdf — Sercel 428XL User's Manual Vol. 2
+#
+# Structural deltas vs. rev2.1/sercel/standard.yaml: none. The 428 doc lists
+# four firmware-document versions (1.0, 3.0, 4.0, 5.0) whose only differences
+# are in Extended-Header bytes 877-948 (well beyond the byte-596 cut-off used
+# by the Phase B import contract). When a binding into that range is needed
+# we'll add `version003.yaml` / `version005.yaml` files with `replace: true`
+# on file_extended_header — until then a single baseline variant is enough.
+#
+# Sercel files don't carry a self-identifying version byte we can dispatch
+# on, so no `version_signal:` here. The reader picks this variant by
+# `availableVariants()` lex-sort latest-wins and writes the choice to the
+# log for diagnostics.
+
+id: version001
+
+firmware_labels:
+  - id: sercel_428xl_unite_v3
+    operator_label: "Sercel 428XL / Unite v3.0 baseline"

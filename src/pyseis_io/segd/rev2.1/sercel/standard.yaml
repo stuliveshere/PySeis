@@ -1,0 +1,329 @@
+# Sercel — SEG-D Rev2.1 manufacturer-common structural (schema v2)
+# Reference: javadocs/segd/428_standards.pdf — Sercel 428XL User's Manual Vol. 2
+#            Chapter 1 = byte-level format (shared between 428XL and Unite v3.0
+#            recorders; both write the same SEG-D file structure).
+#            Chapter 2 = Rev2.1 deltas (revision byte + storage-unit tape label).
+#
+# Structural load order:  rev2.1/base.yaml  →  this file  →  versionNNN.yaml
+# Mapping load order:     standard.map.yaml  →  versionNNN.map.yaml
+#
+# Sercel-specific traits vs. the SEG-D 2.1 standard:
+#   - GH1 byte 17 manufacturer_code = 0x13.
+#   - 3 General Header blocks (GH1 + GH2 + GH3); GH3 is Sercel-defined and
+#     carries the source line / source point.
+#   - channel_set_descriptor.channel_type uses 9 = aux (the SEG-D-standard
+#     code is 0xC); the value table is overridden below.
+#   - Always 7 trace-header-extension blocks per trace.
+#   - Source coords live in the file_extended_header at offsets 572/580/588
+#     (double / double / float — IEEE big-endian).
+#   - Receiver coords live in trace_header_extension_2 at offsets 0/8/16
+#     (double / double / float).
+#   - Sercel files do not carry a gather-type indicator. Default sort is
+#     SOURCE; users override via SegdInputProc.OVERRIDE_PRIMARY_SORT.
+#     (gather_type: section deliberately omitted — SegdReader handles null.)
+
+manufacturer: Sercel
+manufacturer_alias: Sercel428XL_Unite
+code: 0x13
+format_codes:
+  - 8058
+
+# ── Structural block augmentations ────────────────────────────────────────────
+blocks:
+
+  # Override base channel_type values: Sercel encodes aux as 9, not 0xC.
+  channel_set_descriptor:
+    fields:
+      - name: channel_type
+        offset: 10
+        nibble: high
+        type: bcd_nibble
+        values:
+          0x1: seis
+          0x9: aux
+        description: "Channel type (Sercel codes — 1=seis, 9=aux)"
+        spec_ref: "428XL Vol.2 §1 p.21"
+
+  # ── Sercel General Header 3 — source line/point (32 bytes) ───────────────────
+  # Bytes 4-8 = source line, 9-13 = source point. Both encoded as
+  # 5-byte int.frac: 3-byte unsigned big-endian integer part followed by
+  # 2-byte unsigned big-endian fraction (value = reading / 65536). Same
+  # split convention as SmartSolo's GH3 source_line/source_point pair.
+  general_header_3:
+    number: 3
+    size: 32
+    replace: true
+    fields:
+      - name: expanded_file_number
+        offset: 0                # GH3 bytes 1-3
+        length: 3
+        type: uint24
+        description: "Expanded file number (use when GH1 file_number = 0xFFFF)"
+        spec_ref: "428XL Vol.2 §1 p.20"
+
+      - name: source_line_int
+        offset: 3                # GH3 bytes 4-6
+        length: 3
+        type: uint24
+        description: "Source line number (integer part)"
+        spec_ref: "428XL Vol.2 §1 p.20"
+
+      - name: source_line_frac
+        offset: 6                # GH3 bytes 7-8
+        length: 2
+        type: uint16
+        description: "Source line number fractional part (value = reading / 65536)"
+        spec_ref: "428XL Vol.2 §1 p.20"
+
+      - name: source_point_int
+        offset: 8                # GH3 bytes 9-11
+        length: 3
+        type: uint24
+        description: "Source point number (integer part)"
+        spec_ref: "428XL Vol.2 §1 p.20"
+
+      - name: source_point_frac
+        offset: 11               # GH3 bytes 12-13
+        length: 2
+        type: uint16
+        description: "Source point number fractional part (value = reading / 65536)"
+        spec_ref: "428XL Vol.2 §1 p.20"
+
+      - name: source_point_index
+        offset: 13               # GH3 byte 14
+        length: 1
+        type: uint8
+        description: "Source point index (1-9)"
+        spec_ref: "428XL Vol.2 §1 p.20"
+
+      - name: source_set_number
+        offset: 19               # GH3 byte 20
+        length: 1
+        type: uint8
+        description: "Source set number"
+        spec_ref: "428XL Vol.2 §1 p.20"
+
+  # ── File Extended Header — 32 × 32 = 1024 bytes ──────────────────────────────
+  # Authoritative per-file sample rate, sample count, source coords.
+  # The full layout is documented across pp.23-28 of the spec; we declare
+  # only the fields read by the Phase B import contract.
+  file_extended_header:
+    size: 1024
+    reserved:
+      - { offset: 596, length: 428, note: "Sercel firmware-version-specific bytes (873-948 range); not required for Phase B import" }
+    fields:
+      - name: acquisition_length_ms
+        offset: 0                # bytes 1-4
+        length: 4
+        type: uint32
+        description: "Acquisition length in milliseconds"
+        spec_ref: "428XL Vol.2 §1 p.23"
+
+      - name: sample_rate_us
+        offset: 4                # bytes 5-8
+        length: 4
+        type: uint32
+        description: "Sample rate in microseconds"
+        spec_ref: "428XL Vol.2 §1 p.23"
+
+      - name: total_traces
+        offset: 8                # bytes 9-12
+        length: 4
+        type: uint32
+        description: "Total number of traces"
+        spec_ref: "428XL Vol.2 §1 p.23"
+
+      - name: aux_traces
+        offset: 12               # bytes 13-16
+        length: 4
+        type: uint32
+        description: "Number of auxiliary traces"
+        spec_ref: "428XL Vol.2 §1 p.23"
+
+      - name: seismic_traces
+        offset: 16               # bytes 17-20
+        length: 4
+        type: uint32
+        description: "Number of seismic traces"
+        spec_ref: "428XL Vol.2 §1 p.23"
+
+      - name: dead_seismic_traces
+        offset: 20               # bytes 21-24
+        length: 4
+        type: uint32
+        description: "Number of dead seismic traces"
+        spec_ref: "428XL Vol.2 §1 p.23"
+
+      - name: live_seismic_traces
+        offset: 24               # bytes 25-28
+        length: 4
+        type: uint32
+        description: "Number of live seismic traces"
+        spec_ref: "428XL Vol.2 §1 p.23"
+
+      - name: source_type
+        offset: 28               # bytes 29-32
+        length: 4
+        type: uint32
+        description: "Source type: 0=none, 1=impulsive, 2=vibro"
+        spec_ref: "428XL Vol.2 §1 p.23"
+
+      - name: samples_per_trace
+        offset: 32               # bytes 33-36
+        length: 4
+        type: uint32
+        description: "Number of samples in trace"
+        spec_ref: "428XL Vol.2 §1 p.23"
+
+      - name: shot_number
+        offset: 36               # bytes 37-40
+        length: 4
+        type: uint32
+        description: "Shot number (1-9999)"
+        spec_ref: "428XL Vol.2 §1 p.23"
+
+      - name: record_length_ms
+        offset: 484              # bytes 485-488
+        length: 4
+        type: uint32
+        description: "Record length in milliseconds"
+        spec_ref: "428XL Vol.2 §1 p.26"
+
+      - name: source_easting
+        offset: 572              # bytes 573-580 — IEEE 64-bit BE
+        length: 8
+        type: float64
+        description: "Source easting (metres). Defaults to GUI setup or updated by navigation."
+        spec_ref: "428XL Vol.2 §1 p.26"
+
+      - name: source_northing
+        offset: 580              # bytes 581-588 — IEEE 64-bit BE
+        length: 8
+        type: float64
+        description: "Source northing (metres). Defaults to GUI setup or updated by navigation."
+        spec_ref: "428XL Vol.2 §1 p.26"
+
+      - name: source_elevation
+        offset: 588              # bytes 589-592 — IEEE 32-bit BE
+        length: 4
+        type: float32
+        description: "Source elevation (metres). Defaults to GUI setup or updated by navigation."
+        spec_ref: "428XL Vol.2 §1 p.26"
+
+  # ── External Header — variable-size ASCII free-text ──────────────────────────
+  # Concatenation of nav-system text, Config setup text, and source comments.
+  # Size set by GH1.external_header_blocks (32-byte units). No fields decoded
+  # at the schema level; if needed, custom mappings can extract substrings.
+  external_header:
+    size: 1024
+    reserved:
+      - { offset: 0, length: 1024, note: "Free-text ASCII; not parsed at schema level" }
+
+# ── Trace Extension Headers ──────────────────────────────────────────────────
+# 7 blocks × 32 bytes = 224 bytes per trace. Each Sercel trace always carries
+# all 7 (channel_set_descriptor.trace_header_extensions_count = 7). We declare
+# the three blocks consumed by the Phase B import contract; #3-#6 are
+# diagnostic (resistance / tilt / capacitance / leakage / unit-type) and can
+# be added later if needed.
+trace_extensions:
+  count: 7
+  block_size: 32
+  blocks:
+
+    # Block 1 — receiver geometry (line / point, sensor type).
+    receiver_geometry:
+      number: 1
+      fields:
+        - name: receiver_line_number
+          offset: 0              # bytes 1-3
+          length: 3
+          type: uint24
+          description: "Receiver line number (integer part). 0xFFFFFF for aux/DSD: see extended at offset 10."
+          spec_ref: "428XL Vol.2 §1 p.32"
+
+        - name: receiver_point_number
+          offset: 3              # bytes 4-6
+          length: 3
+          type: uint24
+          description: "Receiver point number (integer part). 0xFFFFFF for aux/DSD: see extended at offset 15."
+          spec_ref: "428XL Vol.2 §1 p.32"
+
+        - name: receiver_point_index
+          offset: 6              # byte 7
+          length: 1
+          type: uint8
+          description: "Receiver point index"
+          spec_ref: "428XL Vol.2 §1 p.32"
+
+        - name: samples_per_trace
+          offset: 7              # bytes 8-10
+          length: 3
+          type: uint24
+          description: "Number of samples per trace (per-trace copy of file_extended_header.samples_per_trace)"
+          spec_ref: "428XL Vol.2 §1 p.32"
+
+        - name: sensor_segd_code
+          offset: 20             # byte 21
+          length: 1
+          type: uint8
+          description: "Sensor SEG-D code: 1=hydrophone, 2=geophone vert, 3-5=geophone horizontal, 6=accel vert, 7-9=accel horizontal"
+          spec_ref: "428XL Vol.2 §1 p.33"
+
+    # Block 2 — receiver coordinates (IEEE float, populated by nav system).
+    receiver_coords:
+      number: 2
+      fields:
+        - name: receiver_easting
+          offset: 0              # bytes 1-8 — IEEE 64-bit BE
+          length: 8
+          type: float64
+          description: "Receiver easting (metres). Defaults to GUI setup or updated by nav."
+          spec_ref: "428XL Vol.2 §1 p.34"
+
+        - name: receiver_northing
+          offset: 8              # bytes 9-16 — IEEE 64-bit BE
+          length: 8
+          type: float64
+          description: "Receiver northing (metres). Defaults to GUI setup or updated by nav."
+          spec_ref: "428XL Vol.2 §1 p.34"
+
+        - name: receiver_elevation
+          offset: 16             # bytes 17-20 — IEEE 32-bit BE
+          length: 4
+          type: float32
+          description: "Receiver elevation (metres). Defaults to GUI setup or updated by nav."
+          spec_ref: "428XL Vol.2 §1 p.34"
+
+        - name: sensor_type_number
+          offset: 20             # byte 21
+          length: 1
+          type: uint8
+          description: "Sensor type number (1-9; survey-defined)"
+          spec_ref: "428XL Vol.2 §1 p.34"
+
+        - name: extended_trace_number
+          offset: 28             # bytes 29-32
+          length: 4
+          type: uint32
+          description: "Extended trace number (use when DMUX trace_number=0xFFFF)"
+          spec_ref: "428XL Vol.2 §1 p.34"
+
+    # Block 7 — control-unit summary; carries the seismic trace offset value
+    # (used as AOFFSET when offset removal is disabled — see field_extended
+    # bytes 873-876 for the disable flag, not modelled here).
+    control_unit:
+      number: 7
+      fields:
+        - name: channel_type_id
+          offset: 14             # byte 15
+          length: 1
+          type: uint8
+          description: "Channel type id: 1=seis, 9=aux"
+          spec_ref: "428XL Vol.2 §1 p.40"
+
+        - name: seismic_trace_offset
+          offset: 28             # bytes 29-32
+          length: 4
+          type: uint32
+          description: "Seismic trace offset value (= AOFFSET) when offset removal is disabled; 0 otherwise"
+          spec_ref: "428XL Vol.2 §1 p.40"

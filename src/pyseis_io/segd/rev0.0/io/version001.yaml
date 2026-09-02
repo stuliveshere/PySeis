@@ -1,0 +1,131 @@
+# Input/Output, Inc. — SEG-D Rev0, SYSTEM II extended-header variant.
+#
+# Structural deltas vs. rev0.0/io/standard.yaml: adds the manufacturer-defined
+# `file_extended_header` block. SEG-D Rev 0 leaves this block's content wholly
+# to the manufacturer ("it will be the responsibility of the equipment
+# manufacturer to establish a format and document this area" — rev0 spec
+# §Extended header), so nothing here comes from a published standard.
+#
+# Provenance — no I/O vendor manual is available. The field positions below
+# were derived two ways and cross-checked against each other:
+#
+#   1. Disassembly of ProMAX's own decoder. `segd_read` is not a standalone
+#      binary; it is compiled into $PROMAX_HOME/linux64/lib/libmaxtool2.so as
+#      Fortran routine `segd_mds18_geom_` ("mds18" = manufacturer code 18).
+#      That routine reads a per-line table plus record-level source line/
+#      station, then assigns per-trace receiver stations by locating the
+#      trace's channel index inside a line's window.
+#   2. Byte-level comparison against a reference file, validated against the
+#      headers ProMAX actually emits for it.
+#
+# Reference file (the only I/O Rev 0 material in the local corpus):
+#   SDU09430TA_file-092124__LN__FFID-620.SEGD  (Adavale 2D 1994, line 2)
+#   GH1: mfr code 0x18, serial 8802, SYSTEM II, format 8015, EC=4 (128 bytes),
+#        5 channel sets — CS1 signature, CS2 time-break, CS3/4/5 seis
+#        (120 + 6 + 120 = 246 seis, 248 channels total).
+#   Extended header occupies absolute file bytes 192-319; all `offset:` values
+#   below are relative to byte 192.
+#
+# CONFIDENCE — read before trusting a binding:
+#   * source_station, rcvr_station_base, rcvr_station_last are CONFIRMED:
+#     each reproduces the value ProMAX emits for this file, and
+#     rcvr_station_base is corroborated across all 245 live traces
+#     (SRF_SLOC = trace channel number + rcvr_station_base, no discontinuity).
+#   * source_line / rcvr_line both read 2 in the reference file, which is
+#     also what ProMAX emits for S_LINE and R_LINE. A single file where both
+#     values are identical cannot prove which offset feeds which header — the
+#     source/receiver assignment here is inferred from block structure
+#     (each sits adjacent to its matching station field) and needs a second
+#     file with differing line numbers to confirm.
+#   * total_channels matches this file's 248 exactly but is unverified
+#     against any second file.
+#   * unknown_32 / unknown_36 sit inside the receiver cluster and are parsed
+#     for visibility only. No meaning established; deliberately unmapped.
+#
+# Deliberately NOT bound: the per-trace receiver station. Deriving it requires
+# combining a record-level field with each trace's channel number, which the
+# mapping layer (constant scale/offset only) cannot express. The inputs are
+# exposed as headers instead so the arithmetic can be done downstream.
+
+id: version001
+
+firmware_labels:
+  - id: io_system2_rev0
+    operator_label: "Input/Output, Inc. SYSTEM II — SEG-D Rev0 (layout reverse-engineered, no vendor spec)"
+
+blocks:
+
+  # ── File Extended Header (4 × 32 = 128 bytes) ───────────────────────────────
+  # Size is fixed at 128 to match GH1.extended_header_blocks = 4 on every file
+  # in the local corpus. An I/O file with a different EC count would need its
+  # own variant; the loader addresses this block from
+  # RecordLayout.extendedHeaderStart(), so a differing EC changes the size but
+  # not the start.
+  #
+  # Every value observed here is 16-bit big-endian binary. Note this is NOT
+  # the packed BCD used throughout the Rev 0 standard blocks — inside the
+  # manufacturer's own area I/O switched to plain binary.
+  file_extended_header:
+    size: 128
+    reserved:
+      - { offset: 0,   length: 32, note: "non-zero in the reference file; content unidentified" }
+      - { offset: 42,  length: 58, note: "mostly zero; carries 0x02FAF080 (50000000) twice at offsets 64 and 68, and further small integers at 72-84 — all unidentified" }
+      - { offset: 104, length: 2,  note: "observed 0x0032 (50); unidentified" }
+      - { offset: 108, length: 20, note: "observed small integers (256, 60, 1, 60, 840, 3, 3); unidentified" }
+    fields:
+
+      - name: unknown_32
+        offset: 32
+        length: 2
+        type: uint16
+        description: "Unidentified. Observed 0x0100 (256) in the reference file. Sits immediately before rcvr_line in the receiver-geometry cluster; parsed for visibility, intentionally unmapped."
+        spec_ref: "empirical: FFID-620 ext-hdr bytes 224-225"
+
+      - name: rcvr_line
+        offset: 34
+        length: 2
+        type: uint16
+        description: "Receiver line number. Observed 2, matching the R_LINE ProMAX emits for this file. Source/receiver assignment inferred from adjacency to the receiver station fields — unconfirmed while source_line also reads 2."
+        spec_ref: "empirical: FFID-620 ext-hdr bytes 226-227"
+
+      - name: unknown_36
+        offset: 36
+        length: 2
+        type: uint16
+        description: "Unidentified. Observed 0x0303 (771) in the reference file. Parsed for visibility, intentionally unmapped."
+        spec_ref: "empirical: FFID-620 ext-hdr bytes 228-229"
+
+      - name: rcvr_station_base
+        offset: 38
+        length: 2
+        type: uint16
+        description: "Receiver station origin for the line. ProMAX's per-trace receiver station equals this value plus the trace's channel number: observed 1233 here, giving stations 1234-1478 across channels 1-245. Whether the recorder intended this as first-station-minus-one or as a true zero-channel origin is not established, so consumers should expect a possible one-station bias."
+        spec_ref: "empirical: FFID-620 ext-hdr bytes 230-231; libmaxtool2.so segd_mds18_geom_"
+
+      - name: rcvr_station_last
+        offset: 40
+        length: 2
+        type: uint16
+        description: "Highest receiver station on the line. Observed 1478, matching both the maximum SRF_SLOC ProMAX emits and rcvr_station_base + 245 (the live channel count)."
+        spec_ref: "empirical: FFID-620 ext-hdr bytes 232-233"
+
+      - name: source_line
+        offset: 100
+        length: 2
+        type: uint16
+        description: "Source line number. Observed 2, matching the S_LINE ProMAX emits. Sits immediately before source_station, mirroring the receiver cluster's line/station pairing; assignment unconfirmed while rcvr_line also reads 2."
+        spec_ref: "empirical: FFID-620 ext-hdr bytes 292-293"
+
+      - name: source_station
+        offset: 102
+        length: 2
+        type: uint16
+        description: "Source station (shotpoint) number, constant for the record. Observed 0x054B (1355), matching the SOU_SLOC ProMAX emits for every trace in this file."
+        spec_ref: "empirical: FFID-620 ext-hdr bytes 294-295"
+
+      - name: total_channels
+        offset: 106
+        length: 2
+        type: uint16
+        description: "Candidate total channel count for the record. Observed 0x00F8 (248), matching this file's channel total (1 signature + 1 time-break + 246 seis). Single-file match only — not verified against a second file, and not used as a structural resolver."
+        spec_ref: "empirical: FFID-620 ext-hdr bytes 298-299"
