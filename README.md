@@ -1,20 +1,51 @@
 # PySeis
 
-A fast, simple, and flexible Python I/O library for seismic data.
+A fast, flexible, and schema-driven Python library for seismic data I/O and processing.
 
-## Core Philosophy
+---
 
-`pyseis` is fundamentally an **I/O library** designed to make reading and writing seismic data effortless. It seamlessly converts complex seismic binary formats into native Python data structures—specifically **2D NumPy arrays** for trace amplitudes and **Pandas DataFrames** for trace headers.
+## History & Origins
 
-By eliminating the need to reinvent I/O for every project, `pyseis` empowers geophysicists, processing engineers, and researchers to focus on writing custom Python scripts for processing, analysis, and visualization.
+`pyseis` began around 2011 as a collection of Python modules designed to run inline with Seismic Unix (SU). Over time, it expanded into a broad set of scripts and processing functions, but lacked a cohesive overall structure.
 
-## Key Capabilities
+The fundamental challenge was always **I/O performance vs. flexibility**:
+- Fast binary readers were hardcoded and rigid.
+- Flexible, configurable readers were far too slow for real-world dataset sizes.
+- SEG-D in particular presented an immense hurdle due to huge variations across official specifications, manufacturer quirks, and custom field implementations.
 
-- **Multi-Format I/O**: Read and write industry-standard seismic formats including **SEG-Y**, **SEG-D** (Rev 0.0–3.1), **Seismic Unix (SU)**, **JavaSeis**, and **RSF (Madagascar)**.
-- **YAML-Backed Schemas**: Human-editable YAML schema definitions allow seamless customization for different format versions, manufacturer profiles (e.g., Sercel, SmartSolo), and custom user headers without changing code.
-- **Direct Memory & Buffer Access**: Read and write seismic streams directly to/from RAM memory buffers (`io.BytesIO` / `pyarrow.Buffer`) into Pandas DataFrames and NumPy arrays for zero-disk workflows.
-- **High-Performance Parquet Storage Engine**: Includes an internal single-file Parquet dataset format (`.parquet`) for persistent, high-performance on-disk storage, feature-rich predicate pushdown gather filtering (Shot, CDP, Receiver), and embedded JSON metadata/provenance lineage.
-- **GIS Export & Interactive QC**: Export survey geometries to GeoPackage (`.gpkg`) for QGIS integration, and inspect gathers interactively using the built-in `pyseis-view` CLI viewer.
+After several years of real-world iteration, `pyseis` solved this dilemma by pairing **declarative nested YAML schemas** with low-level **NumPy `dtype` binary compilation**.
+
+---
+
+## Design Philosophy
+
+### 1. Zero I/O Re-Invention
+`pyseis` is fundamentally an I/O library. Its primary goal is to eliminate the boilerplate of parsing binary seismic streams so geophysicists, processing engineers, and researchers can read data directly into **2D NumPy arrays** (for trace amplitudes) and **Pandas DataFrames** (for headers), write custom processing code, and save the results without having to reinvent I/O every time.
+
+### 2. Layered YAML Schema Architecture
+To achieve both flexibility and speed, `pyseis` uses a hierarchical chain of human-editable YAML files:
+1. **Base Standard YAML**: Official SEG specifications (e.g., SEG-D Rev 0.0, 1.0, 2.1, 3.1, SEG-Y Rev 0–2).
+2. **Manufacturer Overrides**: Hardware-specific quirks (e.g., Sercel, SmartSolo).
+3. **Custom / Field Overrides**: User-defined header fields and runtime extensions.
+
+At runtime, `pyseis` compiles these nested YAML definitions directly into optimized NumPy `dtype` structures for high-speed byte parsing without sacrificing customizability.
+
+### 3. Managing Data Scale: RAM Buffers & Optional Parquet Storage
+Seismic datasets are often massive and rarely fit entirely in system memory. While processing in chunks (e.g., gather by gather) works well, constantly parsing and writing raw SEG-Y or SEG-D files imposes severe I/O overheads.
+
+To address scale efficiently:
+- **Direct Memory Buffers**: `pyseis` reads directly from SEG-Y/SEG-D into in-memory Pandas and NumPy structures for lightweight workflows.
+- **Internal Parquet Format**: For persistent storage, `pyseis` includes an optional **Single-Parquet dataset format**. Built on Apache Arrow, it delivers instant header slicing, native Pandas integration, and predicate pushdown gather filtering without the overhead of legacy binary formats.
+
+---
+
+## Key Features
+
+- **Multi-Format Support**: SEG-Y, SEG-D (Rev 0.0–3.1), Seismic Unix (SU), JavaSeis, and RSF.
+- **Nested YAML Schemas**: Fully customizable header definitions and manufacturer profiles compiled to NumPy `dtype`s.
+- **In-Memory & Persistent Storage**: Work directly with RAM buffers or save to single-file Parquet datasets.
+- **Gather-Optimized Filtering**: Fast predicate pushdown queries for Shot, CDP, Receiver, and Offset gathers.
+- **GIS Export & Interactive QC**: Export geometry to GeoPackage (`.gpkg`) and inspect gathers interactively with `pyseis-view`.
 
 ---
 
