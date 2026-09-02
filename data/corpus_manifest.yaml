@@ -114,7 +114,7 @@ datasets:
     download_url: "https://raw.githubusercontent.com/stuliveshere/pyseis/main/data/segd/smartsolo_rev2.segd"
     file_name: "smartsolo_rev2.segd"
     target_dir: "data/segd"
-    sha256: "d78dc1913c23d4630a9e9e6ec1d60ea4fb75f73d6b1d1645e3170be152a550fa"
+    sha256: "3d863488998458cd5796b27b8a729b45e959be8c84c612510280fcd2fd2be952"
     expected:
       n_traces: 1
       n_samples: 167
