@@ -94,6 +94,57 @@ sd = importer.read()
 sd.save("output_data.parquet")
 ```
 
+### 4. Custom Header Locations & Mappings
+
+`pyseis` allows overriding or specifying custom byte locations for non-standard or proprietary header words during import:
+
+#### SEG-Y Custom Header Location
+Map raw SEG-Y header fields or non-standard byte locations to custom DataFrame column names using `custom_mappings`:
+
+```python
+from pyseis.segy.importer import SEGYImporter
+
+# Map trace header keys (e.g. 'tracl', 'fldr') to custom column names
+custom_segy_mappings = [
+    {"segy_key": "tracl", "header_name": "custom_trace_seq"},
+    {"segy_key": "fldr", "header_name": "custom_field_record"},
+]
+
+importer = SEGYImporter("input_data.sgy", custom_mappings=custom_segy_mappings)
+sd = importer.read()
+print(sd.headers[["custom_trace_seq", "custom_field_record"]].head())
+```
+
+#### SEG-D Custom Header Location
+Specify arbitrary byte offsets, lengths, data types, and scale factors within trace header blocks (e.g., `demux_trace_header` or trace extension blocks) using `custom_mappings`:
+
+```python
+from pyseis.segd.importer import SEGDImporter
+
+# Extract custom fields from specific byte offsets in the trace header
+custom_segd_mappings = [
+    {
+        "header_name": "custom_shot_id",
+        "block_role": "demux_trace_header",  # or trace extension block
+        "offset": 0,                         # Byte offset within header block
+        "length": 2,                         # Byte length (e.g. 2 for uint16/int16, 4 for uint32/int32)
+        "type": "uint16",                    # Data type: uint8/16/32, int8/16/32, ieee_float, bcd_digits, etc.
+        "scale": 1.0                         # Optional multiplier
+    },
+    {
+        "header_name": "custom_sensor_code",
+        "block_role": "demux_trace_header",
+        "offset": 12,
+        "length": 4,
+        "type": "int32"
+    }
+]
+
+importer = SEGDImporter("shot_gather.segd", custom_mappings=custom_segd_mappings)
+sd = importer.read()
+print(sd.headers[["custom_shot_id", "custom_sensor_code"]].head())
+```
+
 ---
 
 ## Seismic Processing Cookbook
